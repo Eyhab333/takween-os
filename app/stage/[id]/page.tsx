@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { AddBlockInline } from "@/components/add-block-inline";
 import {
   collection,
@@ -15,30 +16,25 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 
-import { TadabburQuranReview } from "@/components/special/tadabbur-quran-review";
-import { YearCalendar } from "@/components/special/year-calendar";
-
-import { archiveSubtree } from "@/lib/archive-subtree";
 import { Button } from "@/components/ui/button";
+import { archiveSubtree } from "@/lib/archive-subtree";
 
 type NodeRow = {
   id: string;
   title: string;
-  orderKey: string;
+  orderKey?: string;
   type: string;
   parentId: string | null;
   blockType?: string;
 };
 
-export default function CardPage() {
+export default function StagePage() {
   const { id } = useParams<{ id: string }>();
 
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [cardTitle, setCardTitle] = useState("");
+  const [stageTitle, setStageTitle] = useState("");
   const [blocks, setBlocks] = useState<NodeRow[]>([]);
 
   const loadBlocks = useCallback(
@@ -51,9 +47,8 @@ export default function CardPage() {
         where("archived", "==", false),
         orderBy("orderKey"),
       );
-
-      const blkSnap = await getDocs(qBlocks);
-      setBlocks(blkSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      const snap = await getDocs(qBlocks);
+      setBlocks(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
     },
     [id],
   );
@@ -62,8 +57,6 @@ export default function CardPage() {
     return auth.onAuthStateChanged(async (u) => {
       if (!u) {
         setTenantId(null);
-        setCardTitle("");
-        setBlocks([]);
         setLoading(false);
         return;
       }
@@ -72,49 +65,31 @@ export default function CardPage() {
       const tid = u.uid;
       setTenantId(tid);
 
-      const cardRef = doc(db, "tenants", tid, "nodes", id);
-      const cardSnap = await getDoc(cardRef);
-
-      setCardTitle(
-        cardSnap.exists()
-          ? ((cardSnap.data() as any).title as string)
-          : "كارت غير موجود",
+      const ref = doc(db, "tenants", tid, "nodes", id);
+      const snap = await getDoc(ref);
+      setStageTitle(
+        snap.exists()
+          ? ((snap.data() as any).title as string)
+          : "مرحلة غير موجودة",
       );
-      await loadBlocks(tid);
 
+      await loadBlocks(tid);
       setLoading(false);
     });
   }, [id, loadBlocks]);
 
   if (!tenantId)
-    return (
-      <div className="text-muted-foreground">سجّل الدخول لعرض بياناتك.</div>
-    );
+    return <div className="text-muted-foreground">سجّل الدخول.</div>;
   if (loading)
     return <div className="text-muted-foreground">جارٍ التحميل...</div>;
 
-  if (id === "ib_card_mind_tadabbur") {
-    return (
-      <div className="space-y-4">
-        <Breadcrumbs tenantId={tenantId} nodeId={id} />
-        <h1 className="text-2xl font-bold">{cardTitle}</h1>
-        <TadabburQuranReview tenantId={tenantId} />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
+      <Breadcrumbs tenantId={tenantId} nodeId={id} />
+
       <div className="space-y-2">
-        <Breadcrumbs tenantId={tenantId} nodeId={id} />
-        <h1 className="text-2xl font-bold">{cardTitle}</h1>
-        {String(id).startsWith("year_") && (
-          <YearCalendar
-            tenantId={tenantId}
-            yearCardId={id}
-            year={Number(String(id).replace("year_", ""))}
-          />
-        )}
+        <h1 className="text-2xl font-bold">{stageTitle}</h1>
+
         <AddBlockInline
           tenantId={tenantId}
           parentId={id}
@@ -152,7 +127,6 @@ export default function CardPage() {
             </Button>
           </div>
         ))}
-
         {blocks.length === 0 && (
           <div className="text-muted-foreground">لا يوجد Blocks بعد.</div>
         )}

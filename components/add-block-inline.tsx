@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { createBlock } from "@/lib/create-block";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type BlockType =
   | "checklist"
@@ -9,7 +18,9 @@ type BlockType =
   | "playlist"
   | "roadmap"
   | "project"
-  | "notes";
+  | "notes"
+  | "habit"
+  | "routine";
 
 const LABELS: Record<BlockType, string> = {
   checklist: "Checklist",
@@ -18,6 +29,8 @@ const LABELS: Record<BlockType, string> = {
   roadmap: "خارطة طريق",
   project: "مشروع",
   notes: "ملاحظات",
+  habit: "عادة (Habit)",
+  routine: "روتين (جلسات)",
 };
 
 export function AddBlockInline({
@@ -47,33 +60,30 @@ export function AddBlockInline({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <select
-        className="h-9 rounded-md border bg-background px-2 text-sm"
-        value={type}
-        onChange={(e) => setType(e.target.value as BlockType)}
-      >
-        {Object.entries(LABELS).map(([k, v]) => (
-          <option key={k} value={k}>
-            {v}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={type} onValueChange={(v) => setType(v as BlockType)}>
+        <SelectTrigger className="w-40">
+          <SelectValue placeholder="النوع" />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(LABELS).map(([k, v]) => (
+            <SelectItem key={k} value={k}>
+              {v}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <input
-        className="h-9 w-64 rounded-md border bg-background px-3 text-sm"
+      <Input
+        className="w-64"
         placeholder="عنوان البلوك (اختياري)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      <button
-        className="h-9 rounded-md border px-3 text-sm"
-        onClick={create}
-        disabled={busy}
-      >
-        {busy ? "جارٍ الإضافة..." : "إضافة Block"}
-      </button>
+      <Button variant="outline" onClick={create} disabled={busy}>
+        {busy ? "..." : "إضافة Block"}
+      </Button>
     </div>
   );
 }

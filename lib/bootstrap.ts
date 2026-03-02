@@ -1,6 +1,8 @@
 import { db } from "@/lib/firebase";
 import { doc, getDoc, writeBatch } from "firebase/firestore";
 import { ensureIbadahTemplate } from "@/lib/templates/ibadah";
+import { ensureYearsSpace } from "@/lib/templates/years";
+
 
 export async function bootstrapUserIfNeeded(uid: string) {
   const userRef = doc(db, "users", uid);
@@ -40,5 +42,6 @@ export async function bootstrapUserIfNeeded(uid: string) {
   });
 
   await batch.commit();
+  await ensureYearsSpace(tenantId);
   await ensureIbadahTemplate(tenantId);
 }

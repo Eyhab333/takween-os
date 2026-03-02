@@ -2,20 +2,21 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const next = theme === "dark" ? "light" : "dark";
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="icon"
       onClick={() => setTheme(next)}
       aria-label="Toggle theme"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md border"
     >
       <Sun className="h-4 w-4 dark:hidden" />
       <Moon className="h-4 w-4 hidden dark:block" />
-    </button>
+    </Button>
   );
 }

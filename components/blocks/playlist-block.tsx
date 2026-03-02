@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firebase";
 import { importPlaylistEpisodes } from "@/lib/playlist-import";
+import { doc, getDoc } from "firebase/firestore";
+import { startNewPlaylistRun } from "@/lib/playlist-runs";
 import {
   addPlaylistEpisode,
   markEpisodeOpened,
@@ -41,6 +43,9 @@ export function PlaylistBlock({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string>("");
 
+  const [runs, setRuns] = useState(0);
+  const [runBusy, setRunBusy] = useState(false);
+
   useEffect(() => {
     const nodesRef = collection(db, "tenants", tenantId, "nodes");
     const q = query(
@@ -55,10 +60,22 @@ export function PlaylistBlock({
     );
   }, [tenantId, blockId]);
 
+  useEffect(() => {
+    (async () => {
+      const ref = doc(db, "tenants", tenantId, "nodes", blockId);
+      const snap = await getDoc(ref);
+      const data = snap.exists() ? (snap.data() as any) : {};
+      setRuns(typeof data.runsCompleted === "number" ? data.runsCompleted : 0);
+    })();
+  }, [tenantId, blockId]);
+
   const nextEp = useMemo(
     () => eps.find((e) => !e.done) ?? eps[0] ?? null,
     [eps],
   );
+
+  const doneCount = eps.filter((e) => e.done).length;
+  const allDone = eps.length > 0 && doneCount === eps.length;
 
   async function add() {
     const t = title.trim();
@@ -73,7 +90,7 @@ export function PlaylistBlock({
 
   async function openEp(ep: Ep) {
     if (!ep.url) return;
-    await markEpisodeOpened(tenantId, ep.id);
+    await markEpisodeOpened(tenantId, blockId, ep.id);
     window.open(ep.url, "_blank", "noopener,noreferrer");
   }
 
@@ -111,6 +128,28 @@ export function PlaylistBlock({
         >
           متابعة
         </button>
+
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>الختمات: {runs}</span>
+          {/* <span>
+            {doneCount}/{eps.length}
+          </span> */}
+
+          {allDone && (
+            <button
+              className="h-9 rounded-md border px-3 text-sm"
+              disabled={runBusy}
+              onClick={async () => {
+                setRunBusy(true);
+                await startNewPlaylistRun(tenantId, blockId);
+                setRuns((r) => r + 1);
+                setRunBusy(false);
+              }}
+            >
+              {runBusy ? "..." : "ابدأ رحلة جديدة"}
+            </button>
+          )}
+        </div>
 
         <div className="text-sm text-muted-foreground">
           {eps.filter((e) => e.done).length}/{eps.length}

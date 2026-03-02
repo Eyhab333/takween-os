@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, doc, increment, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, increment, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 
 export async function addPlaylistEpisode(tenantId: string, blockId: string, title: string, url: string) {
   const now = Date.now();
@@ -33,9 +33,16 @@ export async function toggleEpisodeDone(tenantId: string, episodeId: string, cur
   });
 }
 
-export async function markEpisodeOpened(tenantId: string, episodeId: string) {
-  await updateDoc(doc(db, "tenants", tenantId, "nodes", episodeId), {
-    lastOpenedAt: Date.now(),
-    version: increment(1),
-  });
+export async function markEpisodeOpened(tenantId: string, blockId: string, episodeId: string) {
+  const now = Date.now();
+
+  const epRef = doc(db, "tenants", tenantId, "nodes", episodeId);
+  const blockRef = doc(db, "tenants", tenantId, "nodes", blockId);
+
+  const batch = writeBatch(db);
+
+  batch.update(epRef, { lastOpenedAt: now, updatedAt: now, version: increment(1) });
+  batch.update(blockRef, { lastOpenedAt: now, lastOpenedEpisodeId: episodeId, updatedAt: now, version: increment(1) });
+
+  await batch.commit();
 }
