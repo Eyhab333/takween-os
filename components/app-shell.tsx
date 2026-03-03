@@ -68,7 +68,7 @@ function DesktopSidebar() {
   return (
     <aside className="hidden min-h-dvh border-l bg-card/30 p-4 lg:block">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-bold">مزرعة الاخرة</div>
+        <div className="text-sm font-bold">مزرعة الآخرة</div>
         <div className="flex items-center gap-2">
           <AuthButtons />
           <ThemeToggle />
