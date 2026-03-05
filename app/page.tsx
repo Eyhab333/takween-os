@@ -178,10 +178,18 @@ export default function Home() {
     router.push(`/card/year_${year}`);
   }
 
-  if (!auth.currentUser)
-    return <div className="text-muted-foreground">سجّل الدخول.</div>;
   if (loading)
     return <div className="text-muted-foreground">جارٍ التحميل...</div>;
+
+  if (!uid)
+    return (
+      <div className="space-y-2">
+        <div className="text-muted-foreground">سجّل الدخول.</div>
+        <Link className="underline" href="/login?next=/">
+          الذهاب لصفحة الدخول
+        </Link>
+      </div>
+    );
 
   function togglePriority(p: { id: string; label: string }) {
     setFocusSelected((cur) =>

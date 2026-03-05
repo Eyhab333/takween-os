@@ -1,39 +1,33 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { auth } from "@/lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { useEffect, useState } from "react";
-import { bootstrapUserIfNeeded } from "@/lib/bootstrap";
-import { ensureAspectsTemplate } from "@/lib/templates/aspects";
+import { Button } from "@/components/ui/button";
 
 export function AuthButtons() {
+  const pathname = usePathname();
   const [user, setUser] = useState(() => auth.currentUser);
 
   useEffect(() => {
-    return auth.onAuthStateChanged(async (u) => {
-      setUser(u);
-      if (u) await bootstrapUserIfNeeded(u.uid);
-      if (u) await ensureAspectsTemplate(u.uid);
-    });
+    return auth.onAuthStateChanged((u) => setUser(u));
   }, []);
 
   if (user) {
     return (
-      <button
-        className="rounded-md border px-3 py-1 text-sm"
-        onClick={() => signOut(auth)}
-      >
+      <Button variant="outline" size="sm" onClick={() => signOut(auth)}>
         خروج
-      </button>
+      </Button>
     );
   }
 
   return (
-    <button
-      className="rounded-md border px-3 py-1 text-sm"
-      onClick={() => signInWithPopup(auth, new GoogleAuthProvider())}
-    >
-      دخول Google
-    </button>
+    <Button asChild variant="outline" size="sm">
+      <Link href={`/login?next=${encodeURIComponent(pathname || "/")}`}>
+        تسجيل الدخول
+      </Link>
+    </Button>
   );
 }
