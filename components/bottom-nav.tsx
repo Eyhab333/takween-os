@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Compass,
-  Activity,
+  // Activity,
   Layers,
   Settings,
   BookOpen,
@@ -19,10 +19,11 @@ type Item = {
 
 const items: Item[] = [
   { href: "/", label: "الرئيسية", icon: Home },
+  { href: "/weekly", label: "اسبوعي", icon: Compass },
   { href: "/ibadah", label: "الشريعة", icon: BookOpen },
   { href: "/aspects", label: "الجوانب", icon: Layers },
-  { href: "/explorer", label: "المستكشف", icon: Compass },
-  { href: "/activity", label: "النشاط", icon: Activity },
+  // { href: "/explorer", label: "المستكشف", icon: Compass },
+  // { href: "/activity", label: "النشاط", icon: Activity },
   { href: "/settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -36,7 +37,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/90 backdrop-blur lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-6 px-2 py-1">
+      <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-1">
         {items.map((it) => {
           const active = isActive(pathname, it.href);
           const Icon = it.icon;

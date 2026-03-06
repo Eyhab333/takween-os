@@ -31,6 +31,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         الرئيسية
       </Link>
       <Link
+        className="block rounded-md px-3 py-2 hover:bg-muted"
+        href="/weekly"
+      >
+        أسبوعي
+      </Link>
+      <Link
         onClick={onNavigate}
         className="block rounded-md px-3 py-2 hover:bg-muted"
         href="/ibadah"
@@ -44,20 +50,20 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       >
         بقية الجوانب
       </Link>
-      <Link
+      {/* <Link
         onClick={onNavigate}
         className="block rounded-md px-3 py-2 hover:bg-muted"
         href="/explorer"
       >
         المستكشف
-      </Link>
-      <Link
+      </Link> */}
+      {/* <Link
         onClick={onNavigate}
         className="block rounded-md px-3 py-2 hover:bg-muted"
         href="/activity"
       >
         النشاط
-      </Link>
+      </Link> */}
       <Link
         onClick={onNavigate}
         className="block rounded-md px-3 py-2 hover:bg-muted"
