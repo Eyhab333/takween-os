@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+// import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
@@ -19,61 +19,7 @@ import {
 import { auth } from "@/lib/firebase";
 import { bootstrapUserIfNeeded } from "@/lib/bootstrap";
 import { ensureAspectsTemplate } from "@/lib/templates/aspects";
-
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  return (
-    <nav className="space-y-2 text-sm">
-      <Link
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/"
-      >
-        الرئيسية
-      </Link>
-      <Link
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/weekly"
-      >
-        أسبوعي
-      </Link>
-      <Link
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/ibadah"
-      >
-        الشريعة والإصلاح
-      </Link>
-      <Link
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/aspects"
-      >
-        بقية الجوانب
-      </Link>
-      {/* <Link
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/explorer"
-      >
-        المستكشف
-      </Link> */}
-      {/* <Link
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/activity"
-      >
-        النشاط
-      </Link> */}
-      <Link
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 hover:bg-muted"
-        href="/settings"
-      >
-        الإعدادات
-      </Link>
-    </nav>
-  );
-}
+import { NavLinks } from "./nav-links";
 
 function DesktopSidebar() {
   return (
@@ -121,7 +67,7 @@ function MobileTopbar() {
               </div>
 
               <div className="mt-6">
-                <NavLinks onNavigate={() => setOpen(false)} />
+                <NavLinks closeOnClick />
               </div>
             </SheetContent>
           </Sheet>

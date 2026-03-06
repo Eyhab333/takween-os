@@ -20,6 +20,12 @@ import {
   where,
 } from "firebase/firestore";
 import { saveFocusCurrent, clearFocusCurrent } from "@/lib/profile-actions";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function computeAgeYMD(birth: Date, now: Date) {
   let y = now.getFullYear() - birth.getFullYear();
@@ -449,23 +455,33 @@ export default function Home() {
 
         <div className="space-y-2">
           <div className="text-sm font-bold">الأولويات</div>
-          <div className="flex flex-wrap gap-2">
-            {PRIORITIES.map((p) => {
-              const active = focusSelected.some((x) => x.id === p.id);
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => togglePriority(p)}
-                  className={[
-                    "rounded-full border px-3 py-2 text-sm",
-                    active ? "bg-muted" : "bg-background hover:bg-muted",
-                  ].join(" ")}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                {focusSelected.length
+                  ? `مختار: ${focusSelected.length}`
+                  : "اختر الأولويات"}
+                <span className="text-muted-foreground">▾</span>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-80 overflow-auto">
+              {PRIORITIES.map((p) => {
+                const checked = focusSelected.some((x) => x.id === p.id);
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={p.id}
+                    checked={checked}
+                    onCheckedChange={() => togglePriority(p)}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    {p.label}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {focusSelected.length > 0 && (
             <div className="pt-2 flex flex-wrap gap-2">
