@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { Loading } from "@/components/loading";
+
 type Entry = {
   id: string;
   locked?: boolean;
@@ -51,6 +53,7 @@ export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<Entry[]>([]);
   const [historyBusy, setHistoryBusy] = useState(false);
+  const [entriesLoading, setEntriesLoading] = useState(true);
 
   // ensure block + open entry
   useEffect(() => {
@@ -89,7 +92,9 @@ export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
     );
 
     return onSnapshot(qEntries, (snap) => {
+      setEntriesLoading(true);
       setEntries(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      setEntriesLoading(false);
     });
   }, [tenantId, blockId, currentRun]);
 
@@ -175,159 +180,163 @@ export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
       )}
 
       <div className="space-y-3">
-        {entries.map((e) => {
-          const locked = !!e.locked;
-          const editable = !locked && e.id === openEntryId;
+        {entriesLoading ? (
+          <Loading full label="جار التحميل" />
+        ) : (
+          entries.map((e) => {
+            const locked = !!e.locked;
+            const editable = !locked && e.id === openEntryId;
 
-          const startSurah = e.startSurah ?? 1;
-          const startAyah = e.startAyah ?? 1;
+            const startSurah = e.startSurah ?? 1;
+            const startAyah = e.startAyah ?? 1;
 
-          const endSurah = (e.endSurah ?? null) as number | null;
-          const endAyah = (e.endAyah ?? null) as number | null;
+            const endSurah = (e.endSurah ?? null) as number | null;
+            const endAyah = (e.endAyah ?? null) as number | null;
 
-          return (
-            <div
-              key={e.id}
-              className={`rounded-lg border bg-card p-4 ${locked ? "opacity-70" : ""}`}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-bold">مراجعة</div>
+            return (
+              <div
+                key={e.id}
+                className={`rounded-lg border bg-card p-4 ${locked ? "opacity-70" : ""}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-bold">مراجعة</div>
 
-                {editable ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEntryTimestamp(tenantId, e.id)}
-                  >
-                    {e.timestampLabel ? e.timestampLabel : "تاريخ اليوم"}
-                  </Button>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    {e.timestampLabel || (locked ? "بدون تاريخ" : "")}
+                  {editable ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEntryTimestamp(tenantId, e.id)}
+                    >
+                      {e.timestampLabel ? e.timestampLabel : "تاريخ اليوم"}
+                    </Button>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      {e.timestampLabel || (locked ? "بدون تاريخ" : "")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {/* البداية */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-bold">البداية</div>
+                    <div className="flex gap-2">
+                      <Select
+                        value={String(startSurah)}
+                        onValueChange={(v) =>
+                          patchEntry(tenantId, e.id, {
+                            startSurah: Number(v),
+                            startAyah: 1,
+                          })
+                        }
+                        disabled={!editable}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SURAH_NAMES.map((name, i) => (
+                            <SelectItem key={i + 1} value={String(i + 1)}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={String(startAyah)}
+                        onValueChange={(v) =>
+                          patchEntry(tenantId, e.id, { startAyah: Number(v) })
+                        }
+                        disabled={!editable}
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ayahOptions(startSurah).map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* النهاية */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-bold">النهاية</div>
+                    <div className="flex gap-2">
+                      <Select
+                        value={endSurah ? String(endSurah) : ""}
+                        onValueChange={(v) =>
+                          patchEntry(tenantId, e.id, {
+                            endSurah: Number(v),
+                            endAyah: 1,
+                          })
+                        }
+                        disabled={!editable}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="اختر السورة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SURAH_NAMES.map((name, i) => (
+                            <SelectItem key={i + 1} value={String(i + 1)}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={endAyah ? String(endAyah) : ""}
+                        onValueChange={(v) =>
+                          patchEntry(tenantId, e.id, { endAyah: Number(v) })
+                        }
+                        disabled={!editable || !endSurah}
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue placeholder="آية" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ayahOptions(endSurah ?? 1).map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {editable && (
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      disabled={!endSurah || !endAyah || busyId === e.id}
+                      onClick={async () => {
+                        if (!endSurah || !endAyah) return;
+                        setBusyId(e.id);
+                        await finalizeEntry({
+                          tenantId,
+                          entryId: e.id,
+                          endSurah,
+                          endAyah,
+                        });
+                        setBusyId(null);
+                      }}
+                    >
+                      {busyId === e.id ? "..." : "تم"}
+                    </Button>
                   </div>
                 )}
               </div>
-
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {/* البداية */}
-                <div className="space-y-2">
-                  <div className="text-sm font-bold">البداية</div>
-                  <div className="flex gap-2">
-                    <Select
-                      value={String(startSurah)}
-                      onValueChange={(v) =>
-                        patchEntry(tenantId, e.id, {
-                          startSurah: Number(v),
-                          startAyah: 1,
-                        })
-                      }
-                      disabled={!editable}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURAH_NAMES.map((name, i) => (
-                          <SelectItem key={i + 1} value={String(i + 1)}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select
-                      value={String(startAyah)}
-                      onValueChange={(v) =>
-                        patchEntry(tenantId, e.id, { startAyah: Number(v) })
-                      }
-                      disabled={!editable}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ayahOptions(startSurah).map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* النهاية */}
-                <div className="space-y-2">
-                  <div className="text-sm font-bold">النهاية</div>
-                  <div className="flex gap-2">
-                    <Select
-                      value={endSurah ? String(endSurah) : ""}
-                      onValueChange={(v) =>
-                        patchEntry(tenantId, e.id, {
-                          endSurah: Number(v),
-                          endAyah: 1,
-                        })
-                      }
-                      disabled={!editable}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="اختر السورة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURAH_NAMES.map((name, i) => (
-                          <SelectItem key={i + 1} value={String(i + 1)}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select
-                      value={endAyah ? String(endAyah) : ""}
-                      onValueChange={(v) =>
-                        patchEntry(tenantId, e.id, { endAyah: Number(v) })
-                      }
-                      disabled={!editable || !endSurah}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue placeholder="آية" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ayahOptions(endSurah ?? 1).map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {editable && (
-                <div className="mt-4">
-                  <Button
-                    variant="outline"
-                    disabled={!endSurah || !endAyah || busyId === e.id}
-                    onClick={async () => {
-                      if (!endSurah || !endAyah) return;
-                      setBusyId(e.id);
-                      await finalizeEntry({
-                        tenantId,
-                        entryId: e.id,
-                        endSurah,
-                        endAyah,
-                      });
-                      setBusyId(null);
-                    }}
-                  >
-                    {busyId === e.id ? "..." : "تم"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
