@@ -20,7 +20,10 @@ import {
   markYoutubeEpisodeOpened,
   saveYoutubeWatchProgress,
 } from "@/lib/youtube-channel-actions";
-import { YoutubeIframePlayer } from "@/components/blocks/youtube-iframe-player";
+import {
+  YoutubeIframePlayer,
+  type YoutubeIframePlayerHandle,
+} from "@/components/blocks/youtube-iframe-player";
 
 export function YoutubePlaylistBlock(props: {
   tenantId: string;
@@ -34,10 +37,11 @@ export function YoutubePlaylistBlock(props: {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [currentEpisodeId, setCurrentEpisodeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const lastSavedRef = useRef<{ sec: number; percent: number }>({
-    sec: 0,
-    percent: 0,
-  });
+
+  const playerRef = useRef<YoutubeIframePlayerHandle | null>(null);
+  const manualSavingRef = useRef(false);
+  const completeInFlightRef = useRef(false);
+  const lastOpenedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubPlaylist = onSnapshot(
@@ -71,6 +75,7 @@ export function YoutubePlaylistBlock(props: {
 
   useEffect(() => {
     if (!playlist?.parentId) return;
+
     return onSnapshot(
       doc(db, "tenants", props.tenantId, "nodes", playlist.parentId),
       (snap) => {
@@ -84,7 +89,13 @@ export function YoutubePlaylistBlock(props: {
   useEffect(() => {
     if (!episodes.length) return;
 
+    const currentStillExists =
+      currentEpisodeId && episodes.some((x) => x.id === currentEpisodeId);
+
+    if (currentStillExists) return;
+
     const requested = searchParams.get("episode");
+
     const preferred =
       requested && episodes.some((x) => x.id === requested)
         ? requested
@@ -93,7 +104,7 @@ export function YoutubePlaylistBlock(props: {
           ? playlist.lastOpenedEpisodeId
           : episodes.find((x) => !x.done)?.id || episodes[0]?.id || null;
 
-    if (preferred && preferred !== currentEpisodeId) {
+    if (preferred) {
       setCurrentEpisodeId(preferred);
     }
   }, [episodes, playlist?.lastOpenedEpisodeId, searchParams, currentEpisodeId]);
@@ -104,19 +115,74 @@ export function YoutubePlaylistBlock(props: {
   );
 
   useEffect(() => {
-    if (!currentEpisodeId || !playlist || !channel) return;
+    const channelId = channel?.id;
+    const playlistId = playlist?.id;
+    const episodeId = currentEpisodeId;
+
+    if (!channelId || !playlistId || !episodeId) return;
+    if (lastOpenedRef.current === episodeId) return;
+
+    lastOpenedRef.current = episodeId;
 
     markYoutubeEpisodeOpened({
       tenantId: props.tenantId,
-      channelBlockId: channel.id,
-      playlistBlockId: playlist.id,
-      episodeId: currentEpisodeId,
+      channelBlockId: channelId,
+      playlistBlockId: playlistId,
+      episodeId,
+    }).catch((error) => {
+      console.error("markYoutubeEpisodeOpened failed", error);
     });
-  }, [channel, currentEpisodeId, playlist, props.tenantId]);
+  }, [channel?.id, playlist?.id, currentEpisodeId, props.tenantId]);
+
+  function getStartSeconds(ep: any) {
+    const saved = Number(ep?.watchSeconds || 0);
+    if (!Number.isFinite(saved) || saved <= 0) return 0;
+    return Math.max(0, saved - 2);
+  }
 
   async function goToEpisode(episodeId: string) {
+    if (episodeId === currentEpisodeId) return;
+
     setCurrentEpisodeId(episodeId);
     router.replace(`/block/${props.blockId}?episode=${episodeId}`);
+  }
+
+  async function saveCurrentPositionManually() {
+    if (!currentEpisode) return;
+    if (currentEpisode.done) return;
+    if (manualSavingRef.current) return;
+
+    const progress = playerRef.current?.getProgress();
+    if (!progress) return;
+
+    const roundedSec = Math.round(progress.current);
+    const roundedPercent = Math.round(progress.percent);
+
+    manualSavingRef.current = true;
+    setSaving(true);
+
+    try {
+      await saveYoutubeWatchProgress({
+        tenantId: props.tenantId,
+        episodeId: currentEpisode.id,
+        watchSeconds: roundedSec,
+        watchPercent: roundedPercent,
+      });
+
+      if (channel?.id && playlist?.id) {
+        await markYoutubeEpisodeOpened({
+          tenantId: props.tenantId,
+          channelBlockId: channel.id,
+          playlistBlockId: playlist.id,
+          episodeId: currentEpisode.id,
+        });
+
+        lastOpenedRef.current = currentEpisode.id;
+      }
+    } finally {
+      manualSavingRef.current = false;
+      setSaving(false);
+    }
   }
 
   async function goNextAfter(currentId: string) {
@@ -144,12 +210,14 @@ export function YoutubePlaylistBlock(props: {
       id: d.id,
       ...(d.data() as any),
     }));
+
     const currentPlaylistIndex = siblings.findIndex(
       (x) => x.id === props.blockId,
     );
 
     for (let i = currentPlaylistIndex + 1; i < siblings.length; i++) {
       const playlistBlock = siblings[i];
+
       const episodeId = await findFirstIncompleteEpisode({
         tenantId: props.tenantId,
         playlistBlockId: playlistBlock.id,
@@ -174,77 +242,77 @@ export function YoutubePlaylistBlock(props: {
             <div className="text-xs text-muted-foreground">قائمة تشغيل</div>
             <h1 className="font-bold">{playlist.title}</h1>
           </div>
+
           <div className="text-sm text-muted-foreground">
             {playlist.doneEpisodes || 0} / {playlist.totalEpisodes || 0}
           </div>
         </div>
 
         {currentEpisode ? (
-          <YoutubeIframePlayer
-            videoId={currentEpisode.videoId}
-            startSeconds={Number(currentEpisode.watchSeconds || 0)}
-            autoplay
-            onProgress={async ({ current, duration, percent }) => {
-              const roundedSec = Math.round(current);
-              const roundedPercent = Math.round(percent);
+          currentEpisode.videoId ? (
+            <>
+              <YoutubeIframePlayer
+                ref={playerRef}
+                key={currentEpisode.id}
+                videoId={currentEpisode.videoId}
+                startSeconds={getStartSeconds(currentEpisode)}
+                autoplay
+                onEnded={async ({ duration }) => {
+                  if (!currentEpisode) return;
+                  if (completeInFlightRef.current) return;
 
-              if (
-                Math.abs(roundedSec - lastSavedRef.current.sec) < 5 &&
-                Math.abs(roundedPercent - lastSavedRef.current.percent) < 3
-              ) {
-                return;
-              }
+                  completeInFlightRef.current = true;
+                  setSaving(true);
 
-              lastSavedRef.current = {
-                sec: roundedSec,
-                percent: roundedPercent,
-              };
-              await saveYoutubeWatchProgress({
-                tenantId: props.tenantId,
-                episodeId: currentEpisode.id,
-                watchSeconds: roundedSec,
-                watchPercent: roundedPercent,
-              });
+                  try {
+                    while (manualSavingRef.current) {
+                      await new Promise((resolve) => setTimeout(resolve, 100));
+                    }
 
-              if (
-                !currentEpisode.done &&
-                (roundedPercent >= 90 ||
-                  (duration > 0 && duration - roundedSec <= 10))
-              ) {
-                if (saving) return;
-                setSaving(true);
-                try {
-                  await completeYoutubeEpisode({
-                    tenantId: props.tenantId,
-                    channelBlockId: channel.id,
-                    playlistBlockId: playlist.id,
-                    episodeId: currentEpisode.id,
-                    durationSeconds: roundedSec,
-                  });
-                } finally {
-                  setSaving(false);
-                }
-              }
-            }}
-            onEnded={async ({ duration }) => {
-              if (!saving) {
-                setSaving(true);
-                try {
-                  await completeYoutubeEpisode({
-                    tenantId: props.tenantId,
-                    channelBlockId: channel.id,
-                    playlistBlockId: playlist.id,
-                    episodeId: currentEpisode.id,
-                    durationSeconds: duration,
-                  });
-                } finally {
-                  setSaving(false);
-                }
-              }
+                    await completeYoutubeEpisode({
+                      tenantId: props.tenantId,
+                      channelBlockId: channel.id,
+                      playlistBlockId: playlist.id,
+                      episodeId: currentEpisode.id,
+                      durationSeconds: duration,
+                    });
 
-              await goNextAfter(currentEpisode.id);
-            }}
-          />
+                    await goNextAfter(currentEpisode.id);
+                  } catch (error) {
+                    console.error("completeYoutubeEpisode failed", error);
+                  } finally {
+                    completeInFlightRef.current = false;
+                    setSaving(false);
+                  }
+                }}
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  disabled={!currentEpisode || currentEpisode.done || saving}
+                  onClick={saveCurrentPositionManually}
+                >
+                  {saving ? "جارٍ الحفظ..." : "حفظ موضع التوقف"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  disabled={!currentEpisode || saving}
+                  onClick={async () => {
+                    if (!currentEpisode) return;
+                    await goNextAfter(currentEpisode.id);
+                  }}
+                >
+                  التالي
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border p-4 text-muted-foreground">
+              لا يوجد videoId لهذه الحلقة.
+            </div>
+          )
         ) : (
           <div className="rounded-xl border p-4 text-muted-foreground">
             لا توجد حلقات في هذه القائمة.
@@ -255,6 +323,7 @@ export function YoutubePlaylistBlock(props: {
       <div className="space-y-2">
         {episodes.map((ep, index) => {
           const active = ep.id === currentEpisodeId;
+
           return (
             <button
               key={ep.id}
@@ -271,8 +340,19 @@ export function YoutubePlaylistBlock(props: {
                   <div className="text-xs text-muted-foreground">
                     حلقة #{index + 1}
                   </div>
+
                   <div className="truncate font-medium">{ep.title}</div>
+
+                  {!ep.done && Number(ep.watchSeconds || 0) > 0 ? (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      محفوظ عند {Math.floor(Number(ep.watchSeconds || 0) / 60)}:
+                      {String(
+                        Math.floor(Number(ep.watchSeconds || 0) % 60),
+                      ).padStart(2, "0")}
+                    </div>
+                  ) : null}
                 </div>
+
                 <div className="shrink-0 text-sm">
                   {ep.done ? "✅" : `${Math.round(ep.watchPercent || 0)}%`}
                 </div>

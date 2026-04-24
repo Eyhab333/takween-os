@@ -211,9 +211,20 @@ export async function saveYoutubeWatchProgress(params: {
   watchSeconds: number;
   watchPercent: number;
 }) {
-  await updateDoc(doc(db, "tenants", params.tenantId, "nodes", params.episodeId), {
-    watchSeconds: Math.max(0, Math.round(params.watchSeconds)),
-    watchPercent: Math.max(0, Math.min(100, Math.round(params.watchPercent))),
+  const episodeRef = doc(
+    db,
+    "tenants",
+    params.tenantId,
+    "nodes",
+    params.episodeId,
+  );
+
+  await updateDoc(episodeRef, {
+    watchSeconds: Math.max(0, Math.round(params.watchSeconds || 0)),
+    watchPercent: Math.max(
+      0,
+      Math.min(100, Math.round(params.watchPercent || 0)),
+    ),
     updatedAt: Date.now(),
   });
 }
@@ -231,6 +242,7 @@ export async function completeYoutubeEpisode(params: {
 
   await runTransaction(db, async (tx) => {
     const [episodeSnap, playlistSnap, channelSnap] = await Promise.all([
+      
       tx.get(episodeRef),
       tx.get(playlistRef),
       tx.get(channelRef),
@@ -245,20 +257,25 @@ export async function completeYoutubeEpisode(params: {
     const channel = channelSnap.data() as any;
     const now = Date.now();
 
-    tx.update(episodeRef, {
-      done: true,
-      watchSeconds: Math.max(episode.watchSeconds || 0, Math.round(params.durationSeconds || 0)),
-      watchPercent: 100,
-      completedAt: now,
-      updatedAt: now,
-    });
-
-    if (episode.done === true) return;
+    if (episode.done === true) {
+      return;
+    }
 
     const nextPlaylistDone = (playlist.doneEpisodes || 0) + 1;
     const nextChannelDone = (channel.doneEpisodes || 0) + 1;
     const totalEpisodes = channel.totalEpisodes || 0;
     const completedWholeRun = totalEpisodes > 0 && nextChannelDone >= totalEpisodes;
+
+    tx.update(episodeRef, {
+      done: true,
+      watchSeconds: Math.max(
+        episode.watchSeconds || 0,
+        Math.round(params.durationSeconds || 0),
+      ),
+      watchPercent: 100,
+      completedAt: now,
+      updatedAt: now,
+    });
 
     tx.update(playlistRef, {
       doneEpisodes: nextPlaylistDone,

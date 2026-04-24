@@ -9,7 +9,10 @@ import { startNewPlaylistRun } from "@/lib/playlist-runs";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { YoutubeIframePlayer } from "@/components/blocks/youtube-iframe-player";
+import {
+  YoutubeIframePlayer,
+  type YoutubeIframePlayerHandle,
+} from "@/components/blocks/youtube-iframe-player";
 import {
   addPlaylistEpisode,
   markEpisodeOpened,
@@ -111,12 +114,11 @@ export function PlaylistBlock({
 
   const [runBusy, setRunBusy] = useState(false);
   const [currentEpisodeId, setCurrentEpisodeId] = useState<string | null>(null);
+  const [playerStartSeconds, setPlayerStartSeconds] = useState(0);
+  const [savingPosition, setSavingPosition] = useState(false);
 
-  const lastSavedRef = useRef<{ sec: number; percent: number }>({
-    sec: 0,
-    percent: 0,
-  });
-  const progressInFlightRef = useRef(false);
+  const playerRef = useRef<YoutubeIframePlayerHandle | null>(null);
+  const manualSavingRef = useRef(false);
   const completeInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -162,8 +164,14 @@ export function PlaylistBlock({
   useEffect(() => {
     if (!eps.length) return;
 
+    const currentStillExists =
+      currentEpisodeId && eps.some((x) => x.id === currentEpisodeId);
+
+    if (currentStillExists) return;
+
     const requested = searchParams.get("episode");
-    const preferred =
+
+    const preferredId =
       requested && eps.some((x) => x.id === requested)
         ? requested
         : block?.lastOpenedEpisodeId &&
@@ -171,15 +179,17 @@ export function PlaylistBlock({
           ? block.lastOpenedEpisodeId
           : eps.find((e) => !e.done)?.id || eps[0]?.id || null;
 
-    if (preferred && preferred !== currentEpisodeId) {
-      setCurrentEpisodeId(preferred);
-    }
+    if (!preferredId) return;
+
+    const preferredEp = eps.find((x) => x.id === preferredId) || null;
+
+    setCurrentEpisodeId(preferredId);
+    setPlayerStartSeconds(getStartSeconds(preferredEp));
   }, [eps, block?.lastOpenedEpisodeId, searchParams, currentEpisodeId]);
 
   useEffect(() => {
     completeInFlightRef.current = false;
-    progressInFlightRef.current = false;
-    lastSavedRef.current = { sec: 0, percent: 0 };
+    manualSavingRef.current = false;
   }, [currentEpisodeId]);
 
   const currentEpisode = useMemo(
@@ -222,51 +232,48 @@ export function PlaylistBlock({
   async function goToEpisode(ep: Ep) {
     if (!ep.url) return;
 
-    await markEpisodeOpened(tenantId, blockId, ep.id);
-
-    const isYoutube = Boolean(ep.videoId);
-    if (!isYoutube) {
+    if (!ep.videoId) {
+      await markEpisodeOpened(tenantId, blockId, ep.id);
       window.open(ep.url, "_blank", "noopener,noreferrer");
       return;
     }
 
     setCurrentEpisodeId(ep.id);
+    setPlayerStartSeconds(getStartSeconds(ep));
     router.replace(`/block/${blockId}?episode=${ep.id}`);
+
+    await markEpisodeOpened(tenantId, blockId, ep.id);
   }
 
-  async function saveProgress(
-    ep: Ep,
-    watchSeconds: number,
-    watchPercent: number,
-  ) {
-    if (ep.done) return;
-    if (progressInFlightRef.current) return;
+  async function saveCurrentPositionManually() {
+    if (!currentEpisode) return;
+    if (currentEpisode.done) return;
+    if (manualSavingRef.current) return;
 
-    const roundedSec = Math.max(0, Math.round(watchSeconds));
-    const roundedPercent = Math.max(0, Math.min(100, Math.round(watchPercent)));
+    const progress = playerRef.current?.getProgress();
+    if (!progress) return;
 
-    if (
-      Math.abs(roundedSec - lastSavedRef.current.sec) < 5 &&
-      Math.abs(roundedPercent - lastSavedRef.current.percent) < 3
-    ) {
-      return;
-    }
+    const roundedSec = Math.max(0, Math.round(progress.current));
+    const roundedPercent = Math.max(
+      0,
+      Math.min(100, Math.round(progress.percent)),
+    );
 
-    lastSavedRef.current = {
-      sec: roundedSec,
-      percent: roundedPercent,
-    };
+    manualSavingRef.current = true;
+    setSavingPosition(true);
 
-    progressInFlightRef.current = true;
     try {
       await savePlaylistEpisodeProgress({
         tenantId,
-        episodeId: ep.id,
-        watchSeconds: Math.max(Number(ep.watchSeconds || 0), roundedSec),
-        watchPercent: Math.max(Number(ep.watchPercent || 0), roundedPercent),
+        episodeId: currentEpisode.id,
+        watchSeconds: roundedSec,
+        watchPercent: roundedPercent,
       });
+
+      await markEpisodeOpened(tenantId, blockId, currentEpisode.id);
     } finally {
-      progressInFlightRef.current = false;
+      manualSavingRef.current = false;
+      setSavingPosition(false);
     }
   }
 
@@ -275,6 +282,10 @@ export function PlaylistBlock({
     completeInFlightRef.current = true;
 
     try {
+      while (manualSavingRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
       const now = Date.now();
       const batch = writeBatch(db);
 
@@ -395,19 +406,48 @@ export function PlaylistBlock({
 
         {currentEpisode ? (
           currentEpisode.videoId ? (
-            <YoutubeIframePlayer
-              key={currentEpisode.id}
-              videoId={currentEpisode.videoId}
-              startSeconds={getStartSeconds(currentEpisode)}
-              autoplay
-              onProgress={async ({ current, percent }) => {
-                await saveProgress(currentEpisode, current, percent);
-              }}
-              onEnded={async ({ duration }) => {
-                await completeEpisode(currentEpisode, duration);
-                await goNextAfter(currentEpisode.id);
-              }}
-            />
+            <>
+              <YoutubeIframePlayer
+                ref={playerRef}
+                key={currentEpisode.id}
+                videoId={currentEpisode.videoId}
+                startSeconds={playerStartSeconds}
+                autoplay
+                onEnded={async ({ duration }) => {
+                  if (!currentEpisode) return;
+
+                  try {
+                    await completeEpisode(currentEpisode, duration);
+                    await goNextAfter(currentEpisode.id);
+                  } catch (error) {
+                    console.error("completeEpisode failed", error);
+                  }
+                }}
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  disabled={
+                    !currentEpisode || currentEpisode.done || savingPosition
+                  }
+                  onClick={saveCurrentPositionManually}
+                >
+                  {savingPosition ? "جارٍ الحفظ..." : "حفظ موضع التوقف"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  disabled={!currentEpisode}
+                  onClick={async () => {
+                    if (!currentEpisode) return;
+                    await goNextAfter(currentEpisode.id);
+                  }}
+                >
+                  التالي
+                </Button>
+              </div>
+            </>
           ) : (
             <div className="space-y-3 rounded-xl border p-4">
               <div className="font-medium">{currentEpisode.title}</div>
