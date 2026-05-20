@@ -14,18 +14,19 @@ import {
 
 type BlockType =
   | "checklist"
-  | "counter"
+  // | "counter"
   | "playlist"
   | "roadmap"
   | "project"
   | "notes"
   | "habit"
   | "routine"
-  | "youtube_channel";
+  | "youtube_channel"
+  | "pdf_reader";
 
 const LABELS: Record<BlockType, string> = {
-  checklist: "Checklist",
-  counter: "عداد",
+  checklist: "قائمة مهام",
+  // counter: "عداد",
   playlist: "قائمة تشغيل",
   roadmap: "خارطة طريق",
   project: "مشروع",
@@ -33,6 +34,7 @@ const LABELS: Record<BlockType, string> = {
   habit: "عادة (Habit)",
   routine: "روتين (جلسات)",
   youtube_channel: "قناة YouTube",
+  pdf_reader: "قراءة PDF",
 };
 
 export function AddBlockInline({
@@ -50,12 +52,14 @@ export function AddBlockInline({
 
   async function create() {
     setBusy(true);
+
     await createBlock({
       tenantId,
       parentId,
       blockType: type,
       title: title.trim() || `(${LABELS[type]}) جديد`,
     });
+
     setTitle("");
     setBusy(false);
     onCreated?.();
@@ -67,6 +71,7 @@ export function AddBlockInline({
         <SelectTrigger className="w-40">
           <SelectValue placeholder="النوع" />
         </SelectTrigger>
+
         <SelectContent>
           {Object.entries(LABELS).map(([k, v]) => (
             <SelectItem key={k} value={k}>

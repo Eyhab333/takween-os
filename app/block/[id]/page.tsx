@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
@@ -22,6 +22,20 @@ import { YoutubePlaylistBlock } from "@/components/blocks/youtube-playlist-block
 
 import { renameNodeTitle } from "@/lib/node-actions";
 import { archiveSubtree } from "@/lib/archive-subtree";
+const PdfReaderBlock = dynamic(
+  () =>
+    import("@/components/blocks/pdf-reader-block").then(
+      (mod) => mod.PdfReaderBlock,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+        جارٍ تحميل قارئ PDF...
+      </div>
+    ),
+  },
+);
 
 export default function BlockPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +45,7 @@ export default function BlockPage() {
   const [title, setTitle] = useState("");
   const [blockType, setBlockType] = useState<string>("");
   const [sourceType, setSourceType] = useState<string>("");
+  const [blockData, setBlockData] = useState<any | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
@@ -54,12 +69,14 @@ export default function BlockPage() {
         setTitle("Block غير موجود");
         setBlockType("");
         setSourceType("");
+        setBlockData(null);
         setLoading(false);
         return;
       }
 
       const data = snap.data() as any;
 
+      setBlockData(data);
       setParentId(data.parentId ?? null);
       setTitle(data.title ?? "");
       setDraftTitle((prev) => (prev ? prev : (data.title ?? "")));
@@ -167,6 +184,8 @@ export default function BlockPage() {
         <YoutubeChannelBlock tenantId={tenantId} blockId={id} />
       ) : blockType === "playlist" && sourceType === "youtube" ? (
         <YoutubePlaylistBlock tenantId={tenantId} blockId={id} />
+      ) : blockType === "pdf_reader" ? (
+        <PdfReaderBlock tenantId={tenantId} blockId={id} block={blockData} />
       ) : blockType === "roadmap" ? (
         <RoadmapBlock tenantId={tenantId} blockId={id} />
       ) : blockType === "playlist" ? (

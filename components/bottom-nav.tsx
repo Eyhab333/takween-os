@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Compass,
-  // Activity,
+  Activity,
   Layers,
-  Settings,
+  //Settings,
   BookOpen,
 } from "lucide-react";
 
@@ -19,12 +19,13 @@ type Item = {
 
 const items: Item[] = [
   { href: "/", label: "الرئيسية", icon: Home },
-  { href: "/weekly", label: "اسبوعي", icon: Compass },
+  { href: "/vision", label: "تنفيذ الرؤية", icon: Compass },
+  { href: "/weekly", label: "اسبوعي", icon: Activity },
   { href: "/ibadah", label: "الشريعة", icon: BookOpen },
   { href: "/aspects", label: "الجوانب", icon: Layers },
   // { href: "/explorer", label: "المستكشف", icon: Compass },
   // { href: "/activity", label: "النشاط", icon: Activity },
-  { href: "/settings", label: "الإعدادات", icon: Settings },
+  //{ href: "/settings", label: "الإعدادات", icon: Settings },
 ];
 
 function isActive(pathname: string, href: string) {

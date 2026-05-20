@@ -1,19 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { db } from "@/lib/firebase";
 import { SURAH_NAMES, AYAH_COUNTS } from "@/lib/quran-data";
 import {
   ensureTadabburQuranReview,
   finalizeEntry,
-  patchEntry,
   setEntryTimestamp,
 } from "@/lib/quran-review-actions";
 import {
   collection,
   doc,
   getDocs,
+  limit,
+  limitToLast,
   onSnapshot,
   orderBy,
   query,
@@ -41,29 +49,97 @@ type Entry = {
   runNumber?: number | null;
 };
 
+type BlockState = {
+  runs: number;
+  currentRun: number;
+  currentOpenEntryId: string | null;
+};
+
+type DraftRange = {
+  startSurah: number;
+  startAyah: number;
+  endSurah: number | null;
+  endAyah: number | null;
+};
+
+const RECENT_LIMIT = 10;
+const HISTORY_LIMIT = 100;
+
+const SURAH_OPTIONS = SURAH_NAMES.map((name, idx) => ({
+  value: String(idx + 1),
+  label: name,
+}));
+
+const AYAH_OPTIONS_BY_SURAH = AYAH_COUNTS.map((count) =>
+  Array.from({ length: count }, (_, i) => ({
+    value: String(i + 1),
+    label: String(i + 1),
+  })),
+);
+
+function ayahOptions(surahNum?: number | null) {
+  const idx = (surahNum ?? 1) - 1;
+  return AYAH_OPTIONS_BY_SURAH[idx] ?? AYAH_OPTIONS_BY_SURAH[0];
+}
+
+function surahName(surahNum?: number | null) {
+  if (!surahNum) return "-";
+  return SURAH_NAMES[surahNum - 1] ?? String(surahNum);
+}
+
+function ayahText(ayahNum?: number | null) {
+  return ayahNum ? String(ayahNum) : "-";
+}
+
+function formatRange(e: Entry) {
+  return `${surahName(e.startSurah)}:${ayahText(e.startAyah)} → ${surahName(
+    e.endSurah,
+  )}:${ayahText(e.endAyah)}`;
+}
+
+function entryToDraft(entry: Entry): DraftRange {
+  return {
+    startSurah: entry.startSurah ?? 1,
+    startAyah: entry.startAyah ?? 1,
+    endSurah: entry.endSurah ?? null,
+    endAyah: entry.endAyah ?? null,
+  };
+}
+
 export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
   const [blockId, setBlockId] = useState<string | null>(null);
+  const [blockState, setBlockState] = useState<BlockState>({
+    runs: 0,
+    currentRun: 1,
+    currentOpenEntryId: null,
+  });
 
-  const [runs, setRuns] = useState(0);
-  const [currentRun, setCurrentRun] = useState(1);
+  const [openEntry, setOpenEntry] = useState<Entry | null>(null);
+  const [recentEntries, setRecentEntries] = useState<Entry[]>([]);
+  const [openEntryLoading, setOpenEntryLoading] = useState(true);
+  const [recentLoading, setRecentLoading] = useState(true);
 
-  const [entries, setEntries] = useState<Entry[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<Entry[]>([]);
   const [historyBusy, setHistoryBusy] = useState(false);
-  const [entriesLoading, setEntriesLoading] = useState(true);
 
-  // ensure block + open entry
+  // ensure block + current open entry
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       const res = await ensureTadabburQuranReview(tenantId);
-      setBlockId(res.blockId);
+      if (!cancelled) setBlockId(res.blockId);
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [tenantId]);
 
-  // subscribe block doc only (runs + currentRun)
+  // subscribe block doc only
   useEffect(() => {
     if (!blockId) return;
 
@@ -71,50 +147,75 @@ export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
       doc(db, "tenants", tenantId, "nodes", blockId),
       (snap) => {
         const d = snap.exists() ? (snap.data() as any) : {};
-        setRuns(typeof d.runsCompleted === "number" ? d.runsCompleted : 0);
-        setCurrentRun(typeof d.currentRun === "number" ? d.currentRun : 1);
+        setBlockState({
+          runs: typeof d.runsCompleted === "number" ? d.runsCompleted : 0,
+          currentRun: typeof d.currentRun === "number" ? d.currentRun : 1,
+          currentOpenEntryId:
+            typeof d.currentOpenEntryId === "string"
+              ? d.currentOpenEntryId
+              : null,
+        });
       },
     );
   }, [tenantId, blockId]);
 
-  // subscribe entries for currentRun only
+  // subscribe current open entry only
+  useEffect(() => {
+    if (!blockState.currentOpenEntryId) {
+      setOpenEntry(null);
+      setOpenEntryLoading(false);
+      return;
+    }
+
+    setOpenEntryLoading(true);
+
+    return onSnapshot(
+      doc(db, "tenants", tenantId, "nodes", blockState.currentOpenEntryId),
+      (snap) => {
+        setOpenEntry(
+          snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null,
+        );
+        setOpenEntryLoading(false);
+      },
+    );
+  }, [tenantId, blockState.currentOpenEntryId]);
+
+  // subscribe last entries only, not the full current run
   useEffect(() => {
     if (!blockId) return;
 
+    setRecentLoading(true);
+
     const nodesRef = collection(db, "tenants", tenantId, "nodes");
-    const qEntries = query(
+    const qRecent = query(
       nodesRef,
       where("parentId", "==", blockId),
       where("type", "==", "item"),
       where("archived", "==", false),
-      where("runNumber", "==", currentRun),
+      where("runNumber", "==", blockState.currentRun),
       orderBy("orderKey"),
+      limitToLast(RECENT_LIMIT + 1),
     );
 
-    return onSnapshot(qEntries, (snap) => {
-      setEntriesLoading(true);
-      setEntries(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-      setEntriesLoading(false);
+    return onSnapshot(qRecent, (snap) => {
+      const rows = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as any),
+      })) as Entry[];
+      setRecentEntries(
+        rows
+          .filter((e) => e.locked)
+          .reverse()
+          .slice(0, RECENT_LIMIT),
+      );
+      setRecentLoading(false);
     });
-  }, [tenantId, blockId, currentRun]);
-
-  const openEntryId = useMemo(() => {
-    const open = [...entries].reverse().find((e) => !e.locked);
-    return open?.id ?? null;
-  }, [entries]);
-
-  const ayahOptions = (surahNum?: number) => {
-    const idx = (surahNum ?? 1) - 1;
-    const max = AYAH_COUNTS[idx] ?? 7;
-    return Array.from({ length: max }, (_, i) => i + 1);
-  };
+  }, [tenantId, blockId, blockState.currentRun]);
 
   async function toggleHistory() {
     const next = !showHistory;
     setShowHistory(next);
-    if (!next) return;
-
-    if (!blockId) return;
+    if (!next || !blockId) return;
 
     setHistoryBusy(true);
     try {
@@ -124,9 +225,10 @@ export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
         where("parentId", "==", blockId),
         where("type", "==", "item"),
         where("archived", "==", false),
-        where("runNumber", "<", currentRun),
+        where("runNumber", "<", blockState.currentRun),
         orderBy("runNumber", "desc"),
         orderBy("orderKey", "desc"),
+        limit(HISTORY_LIMIT),
       );
 
       const snap = await getDocs(qHist);
@@ -136,208 +238,336 @@ export function TadabburQuranReview({ tenantId }: { tenantId: string }) {
     }
   }
 
-  if (!blockId)
+  const isLoading = !blockId || openEntryLoading || recentLoading;
+
+  if (!blockId) {
     return <div className="text-muted-foreground">جارٍ التحضير...</div>;
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">
-          عدد الختمات: <span className="font-bold text-foreground">{runs}</span>
-          <span className="mx-2">•</span>
-          الختمة الحالية:{" "}
-          <span className="font-bold text-foreground">{currentRun}</span>
-        </div>
+      <ReviewHeader
+        runs={blockState.runs}
+        currentRun={blockState.currentRun}
+        showHistory={showHistory}
+        historyBusy={historyBusy}
+        onToggleHistory={toggleHistory}
+      />
+
+      {showHistory && (
+        <HistoryList history={history} historyBusy={historyBusy} />
+      )}
+
+      {isLoading ? (
+        <Loading full label="جار التحميل" />
+      ) : (
+        <>
+          {openEntry ? (
+            <CurrentReviewCard
+              tenantId={tenantId}
+              entry={openEntry}
+              busyId={busyId}
+              setBusyId={setBusyId}
+            />
+          ) : (
+            <div className="rounded-lg border bg-card p-4 text-muted-foreground">
+              لا توجد مراجعة مفتوحة حاليًا.
+            </div>
+          )}
+
+          <RecentReviewList entries={recentEntries} />
+        </>
+      )}
+    </div>
+  );
+}
+
+const ReviewHeader = memo(function ReviewHeader({
+  runs,
+  currentRun,
+  showHistory,
+  historyBusy,
+  onToggleHistory,
+}: {
+  runs: number;
+  currentRun: number;
+  showHistory: boolean;
+  historyBusy: boolean;
+  onToggleHistory: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="text-sm text-muted-foreground">
+        عدد الختمات: <span className="font-bold text-foreground">{runs}</span>
+        <span className="mx-2">•</span>
+        الختمة الحالية:{" "}
+        <span className="font-bold text-foreground">{currentRun}</span>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onToggleHistory}
+        disabled={historyBusy}
+      >
+        {showHistory ? "إخفاء السجل" : historyBusy ? "..." : "عرض السجل"}
+      </Button>
+    </div>
+  );
+});
+
+const HistoryList = memo(function HistoryList({
+  history,
+  historyBusy,
+}: {
+  history: Entry[];
+  historyBusy: boolean;
+}) {
+  if (historyBusy) {
+    return (
+      <div className="text-sm text-muted-foreground">جارٍ تحميل السجل...</div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-bold">السجل</div>
+
+      {history.length === 0 ? (
+        <div className="text-muted-foreground">لا يوجد سجل بعد.</div>
+      ) : (
+        history.map((h) => <LockedReviewCard key={h.id} entry={h} showRun />)
+      )}
+    </div>
+  );
+});
+
+function CurrentReviewCard({
+  tenantId,
+  entry,
+  busyId,
+  setBusyId,
+}: {
+  tenantId: string;
+  entry: Entry;
+  busyId: string | null;
+  setBusyId: (id: string | null) => void;
+}) {
+  const [draft, setDraft] = useState<DraftRange>(() => entryToDraft(entry));
+
+  useEffect(() => {
+    setDraft(entryToDraft(entry));
+  }, [
+    entry.id,
+    entry.startSurah,
+    entry.startAyah,
+    entry.endSurah,
+    entry.endAyah,
+  ]);
+
+  const canFinish = Boolean(draft.endSurah && draft.endAyah);
+  const isBusy = busyId === entry.id;
+
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-bold">المراجعة الحالية</div>
 
         <Button
           variant="outline"
           size="sm"
-          onClick={toggleHistory}
-          disabled={historyBusy}
+          onClick={() => setEntryTimestamp(tenantId, entry.id)}
         >
-          {showHistory ? "إخفاء السجل" : historyBusy ? "..." : "عرض السجل"}
+          {entry.timestampLabel ? entry.timestampLabel : "تاريخ اليوم"}
         </Button>
       </div>
 
-      {showHistory && (
-        <div className="space-y-2">
-          <div className="text-sm font-bold">السجل</div>
+      <QuranRangePicker draft={draft} onChange={setDraft} />
 
-          {history.length === 0 ? (
-            <div className="text-muted-foreground">لا يوجد سجل بعد.</div>
-          ) : (
-            history.map((h) => (
-              <div key={h.id} className="rounded-md border bg-card p-3 text-sm">
-                <div className="font-bold">ختمة {h.runNumber ?? "-"}</div>
-                <div className="text-muted-foreground">
-                  {h.timestampLabel || ""} — {h.startSurah}:{h.startAyah} →{" "}
-                  {h.endSurah ?? "-"}:{h.endAyah ?? "-"}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      <div className="mt-4">
+        <Button
+          variant="outline"
+          disabled={!canFinish || isBusy}
+          onClick={async () => {
+            if (!draft.endSurah || !draft.endAyah) return;
 
-      <div className="space-y-3">
-        {entriesLoading ? (
-          <Loading full label="جار التحميل" />
-        ) : (
-          entries.map((e) => {
-            const locked = !!e.locked;
-            const editable = !locked && e.id === openEntryId;
-
-            const startSurah = e.startSurah ?? 1;
-            const startAyah = e.startAyah ?? 1;
-
-            const endSurah = (e.endSurah ?? null) as number | null;
-            const endAyah = (e.endAyah ?? null) as number | null;
-
-            return (
-              <div
-                key={e.id}
-                className={`rounded-lg border bg-card p-4 ${locked ? "opacity-70" : ""}`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm font-bold">مراجعة</div>
-
-                  {editable ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEntryTimestamp(tenantId, e.id)}
-                    >
-                      {e.timestampLabel ? e.timestampLabel : "تاريخ اليوم"}
-                    </Button>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      {e.timestampLabel || (locked ? "بدون تاريخ" : "")}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {/* البداية */}
-                  <div className="space-y-2">
-                    <div className="text-sm font-bold">البداية</div>
-                    <div className="flex gap-2">
-                      <Select
-                        value={String(startSurah)}
-                        onValueChange={(v) =>
-                          patchEntry(tenantId, e.id, {
-                            startSurah: Number(v),
-                            startAyah: 1,
-                          })
-                        }
-                        disabled={!editable}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SURAH_NAMES.map((name, i) => (
-                            <SelectItem key={i + 1} value={String(i + 1)}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select
-                        value={String(startAyah)}
-                        onValueChange={(v) =>
-                          patchEntry(tenantId, e.id, { startAyah: Number(v) })
-                        }
-                        disabled={!editable}
-                      >
-                        <SelectTrigger className="w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ayahOptions(startSurah).map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* النهاية */}
-                  <div className="space-y-2">
-                    <div className="text-sm font-bold">النهاية</div>
-                    <div className="flex gap-2">
-                      <Select
-                        value={endSurah ? String(endSurah) : ""}
-                        onValueChange={(v) =>
-                          patchEntry(tenantId, e.id, {
-                            endSurah: Number(v),
-                            endAyah: 1,
-                          })
-                        }
-                        disabled={!editable}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="اختر السورة" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SURAH_NAMES.map((name, i) => (
-                            <SelectItem key={i + 1} value={String(i + 1)}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select
-                        value={endAyah ? String(endAyah) : ""}
-                        onValueChange={(v) =>
-                          patchEntry(tenantId, e.id, { endAyah: Number(v) })
-                        }
-                        disabled={!editable || !endSurah}
-                      >
-                        <SelectTrigger className="w-28">
-                          <SelectValue placeholder="آية" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ayahOptions(endSurah ?? 1).map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {editable && (
-                  <div className="mt-4">
-                    <Button
-                      variant="outline"
-                      disabled={!endSurah || !endAyah || busyId === e.id}
-                      onClick={async () => {
-                        if (!endSurah || !endAyah) return;
-                        setBusyId(e.id);
-                        await finalizeEntry({
-                          tenantId,
-                          entryId: e.id,
-                          endSurah,
-                          endAyah,
-                        });
-                        setBusyId(null);
-                      }}
-                    >
-                      {busyId === e.id ? "..." : "تم"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+            setBusyId(entry.id);
+            try {
+              await finalizeEntry({
+                tenantId,
+                entryId: entry.id,
+                startSurah: draft.startSurah,
+                startAyah: draft.startAyah,
+                endSurah: draft.endSurah,
+                endAyah: draft.endAyah,
+              });
+            } finally {
+              setBusyId(null);
+            }
+          }}
+        >
+          {isBusy ? "..." : "تم"}
+        </Button>
       </div>
     </div>
   );
 }
+
+const QuranRangePicker = memo(function QuranRangePicker({
+  draft,
+  onChange,
+}: {
+  draft: DraftRange;
+  onChange: Dispatch<SetStateAction<DraftRange>>;
+}) {
+  const startAyahOptions = useMemo(
+    () => ayahOptions(draft.startSurah),
+    [draft.startSurah],
+  );
+  const endAyahOptions = useMemo(
+    () => ayahOptions(draft.endSurah ?? 1),
+    [draft.endSurah],
+  );
+
+  return (
+    <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="space-y-2">
+        <div className="text-sm font-bold">البداية</div>
+        <div className="flex gap-2">
+          <Select
+            value={String(draft.startSurah)}
+            onValueChange={(v) =>
+              onChange((cur) => ({
+                ...cur,
+                startSurah: Number(v),
+                startAyah: 1,
+              }))
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SURAH_OPTIONS.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={String(draft.startAyah)}
+            onValueChange={(v) =>
+              onChange((cur) => ({ ...cur, startAyah: Number(v) }))
+            }
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {startAyahOptions.map((a) => (
+                <SelectItem key={a.value} value={a.value}>
+                  {a.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-sm font-bold">النهاية</div>
+        <div className="flex gap-2">
+          <Select
+            value={draft.endSurah ? String(draft.endSurah) : ""}
+            onValueChange={(v) =>
+              onChange((cur) => ({
+                ...cur,
+                endSurah: Number(v),
+                endAyah: 1,
+              }))
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="اختر السورة" />
+            </SelectTrigger>
+            <SelectContent>
+              {SURAH_OPTIONS.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={draft.endAyah ? String(draft.endAyah) : ""}
+            onValueChange={(v) =>
+              onChange((cur) => ({ ...cur, endAyah: Number(v) }))
+            }
+            disabled={!draft.endSurah}
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue placeholder="آية" />
+            </SelectTrigger>
+            <SelectContent>
+              {endAyahOptions.map((a) => (
+                <SelectItem key={a.value} value={a.value}>
+                  {a.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const RecentReviewList = memo(function RecentReviewList({
+  entries,
+}: {
+  entries: Entry[];
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-bold">آخر المراجعات</div>
+        <div className="text-xs text-muted-foreground">
+          آخر {RECENT_LIMIT} فقط
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="rounded-lg border bg-card p-4 text-muted-foreground">
+          لا توجد مراجعات مكتملة في الختمة الحالية بعد.
+        </div>
+      ) : (
+        entries.map((e) => <LockedReviewCard key={e.id} entry={e} />)
+      )}
+    </div>
+  );
+});
+
+const LockedReviewCard = memo(function LockedReviewCard({
+  entry,
+  showRun = false,
+}: {
+  entry: Entry;
+  showRun?: boolean;
+}) {
+  return (
+    <div className="rounded-md border bg-card p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-bold">
+          {showRun ? `ختمة ${entry.runNumber ?? "-"}` : "مراجعة"}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {entry.timestampLabel || "بدون تاريخ"}
+        </div>
+      </div>
+      <div className="mt-1 text-muted-foreground">{formatRange(entry)}</div>
+    </div>
+  );
+});

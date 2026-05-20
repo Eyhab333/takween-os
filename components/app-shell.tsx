@@ -3,7 +3,7 @@
 // import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-
+import { PwaInstallButton } from "@/components/pwa-install-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButtons } from "@/components/auth-buttons";
 import { BottomNav } from "@/components/bottom-nav";
@@ -126,6 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
+      {!isAuthRoute ? <PwaInstallButton /> : null}
       {!isAuthRoute ? <BottomNav /> : null}
     </div>
   );

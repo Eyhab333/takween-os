@@ -34,14 +34,6 @@ export async function ensureTadabburQuranReview(tenantId: string) {
   const blockRef = doc(db, "tenants", tenantId, "nodes", BLOCK_ID);
   const blockSnap = await getDoc(blockRef);
 
-
-const blockData = blockSnap.exists() ? (blockSnap.data() as any) : {};
-const currentRun = typeof blockData.currentRun === "number" ? blockData.currentRun : 1;
-
-if (blockSnap.exists() && typeof blockData.currentRun !== "number") {
-  await updateDoc(blockRef, { currentRun: 1, updatedAt: Date.now(), version: increment(1) });
-}
-
   if (!blockSnap.exists()) {
     await setDoc(blockRef, {
       id: BLOCK_ID,
@@ -52,14 +44,84 @@ if (blockSnap.exists() && typeof blockData.currentRun !== "number") {
       blockType: "quran_review_hidden",
       hidden: true,
       runsCompleted: 0,
+      currentRun: 1,
+      currentOpenEntryId: null,
+      lastCompletedEntryId: null,
+      quranReviewRunNumberMigrated: true,
       archived: false,
       createdAt: now,
       updatedAt: now,
       version: 1,
     });
+  } else {
+    const blockData = blockSnap.data() as any;
+    const needsPatch: Record<string, any> = {};
+
+    if (typeof blockData.currentRun !== "number") {
+      needsPatch.currentRun = 1;
+    }
+
+    if (!("currentOpenEntryId" in blockData)) {
+      needsPatch.currentOpenEntryId = null;
+    }
+
+    if (!("lastCompletedEntryId" in blockData)) {
+      needsPatch.lastCompletedEntryId = null;
+    }
+
+    if (Object.keys(needsPatch).length) {
+      await updateDoc(blockRef, {
+        ...needsPatch,
+        updatedAt: now,
+        version: increment(1),
+      });
+    }
   }
 
-  // ensure يوجد entry مفتوح (locked=false)
+  const freshBlockSnap = await getDoc(blockRef);
+  const freshBlockData = freshBlockSnap.exists()
+    ? (freshBlockSnap.data() as any)
+    : {};
+  const currentRun =
+    typeof freshBlockData.currentRun === "number" ? freshBlockData.currentRun : 1;
+
+  // Migration قديمة: نفذها مرة واحدة فقط بدل قراءتها مع كل فتح للصفحة.
+  if (freshBlockData.quranReviewRunNumberMigrated !== true) {
+    const nodesRef = collection(db, "tenants", tenantId, "nodes");
+    const qAll = query(
+      nodesRef,
+      where("parentId", "==", BLOCK_ID),
+      where("type", "==", "item"),
+      where("archived", "==", false),
+      limit(500),
+    );
+    const allSnap = await getDocs(qAll);
+
+    const batch = writeBatch(db);
+    let changed = 0;
+
+    allSnap.docs.forEach((d) => {
+      const data = d.data() as any;
+      if (typeof data.runNumber !== "number") {
+        batch.update(d.ref, {
+          runNumber: 1,
+          updatedAt: now,
+          version: increment(1),
+        });
+        changed++;
+      }
+    });
+
+    batch.update(blockRef, {
+      quranReviewRunNumberMigrated: true,
+      updatedAt: now,
+      version: increment(1),
+    });
+
+    await batch.commit();
+  }
+
+  // تأكد من وجود entry مفتوح واحد على الأقل، وخزن id الخاص به على البلوك.
   const nodesRef = collection(db, "tenants", tenantId, "nodes");
   const qOpen = query(
     nodesRef,
@@ -67,14 +129,16 @@ if (blockSnap.exists() && typeof blockData.currentRun !== "number") {
     where("type", "==", "item"),
     where("archived", "==", false),
     where("locked", "==", false),
-    limit(1)
+    limit(1),
   );
   const openSnap = await getDocs(qOpen);
 
   if (openSnap.empty) {
-    const ref = doc(nodesRef);
-    await setDoc(ref, {
-      id: ref.id,
+    const nextRef = doc(nodesRef);
+    const batch = writeBatch(db);
+
+    batch.set(nextRef, {
+      id: nextRef.id,
       tenantId,
       parentId: BLOCK_ID,
       type: "item",
@@ -86,7 +150,7 @@ if (blockSnap.exists() && typeof blockData.currentRun !== "number") {
       startAyah: 1,
       endSurah: null,
       endAyah: null,
-      orderKey: `${now.toString(36)}_${ref.id}`,
+      orderKey: `${now.toString(36)}_${nextRef.id}`,
       archived: false,
       createdAt: now,
       updatedAt: now,
@@ -94,35 +158,24 @@ if (blockSnap.exists() && typeof blockData.currentRun !== "number") {
       currentRun: 1,
       runNumber: currentRun,
     });
-  }
 
+    batch.update(blockRef, {
+      currentOpenEntryId: nextRef.id,
+      updatedAt: now,
+      version: increment(1),
+    });
 
-// migrate old entries (runNumber missing) -> runNumber=1
-{
-  const nodesRef = collection(db, "tenants", tenantId, "nodes");
-  const qAll = query(
-    nodesRef,
-    where("parentId", "==", BLOCK_ID),
-    where("type", "==", "item"),
-    where("archived", "==", false),
-    limit(500)
-  );
-  const allSnap = await getDocs(qAll);
-
-  const batch = writeBatch(db);
-  let changed = 0;
-
-  allSnap.docs.forEach((d) => {
-    const data = d.data() as any;
-    if (typeof data.runNumber !== "number") {
-      batch.update(d.ref, { runNumber: 1, updatedAt: Date.now(), version: increment(1) });
-      changed++;
+    await batch.commit();
+  } else {
+    const openId = openSnap.docs[0].id;
+    if (freshBlockData.currentOpenEntryId !== openId) {
+      await updateDoc(blockRef, {
+        currentOpenEntryId: openId,
+        updatedAt: now,
+        version: increment(1),
+      });
     }
-  });
-
-  if (changed) await batch.commit();
-}
-
+  }
 
   return { blockId: BLOCK_ID };
 }
@@ -140,7 +193,7 @@ export async function setEntryTimestamp(tenantId: string, entryId: string) {
 export async function patchEntry(
   tenantId: string,
   entryId: string,
-  patch: Record<string, any>
+  patch: Record<string, any>,
 ) {
   await updateDoc(doc(db, "tenants", tenantId, "nodes", entryId), {
     ...patch,
@@ -152,6 +205,8 @@ export async function patchEntry(
 export async function finalizeEntry(params: {
   tenantId: string;
   entryId: string;
+  startSurah: number;
+  startAyah: number;
   endSurah: number;
   endAyah: number;
 }) {
@@ -178,6 +233,8 @@ export async function finalizeEntry(params: {
   const batch = writeBatch(db);
 
   batch.update(entryRef, {
+    startSurah: params.startSurah,
+    startAyah: params.startAyah,
     endSurah: params.endSurah,
     endAyah: params.endAyah,
     locked: true,
@@ -207,14 +264,19 @@ export async function finalizeEntry(params: {
     version: 1,
   });
 
+  const blockPatch: Record<string, any> = {
+    currentOpenEntryId: nextRef.id,
+    lastCompletedEntryId: params.entryId,
+    updatedAt: now,
+    version: increment(1),
+  };
+
   if (isKhatmah) {
-    batch.update(blockRef, {
-      runsCompleted: increment(1),
-      currentRun: nextRun,
-      updatedAt: now,
-      version: increment(1),
-    });
+    blockPatch.runsCompleted = increment(1);
+    blockPatch.currentRun = nextRun;
   }
+
+  batch.update(blockRef, blockPatch);
 
   await batch.commit();
 }
