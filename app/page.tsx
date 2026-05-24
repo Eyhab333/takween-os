@@ -233,7 +233,9 @@ export default function Home() {
     <div className="space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold">مرحبًا، {name}</h1>
+        <h1 className="brand-heading text-2xl font-extrabold">
+          مرحبًا، {name}
+        </h1>
         {computed && (
           <div className="text-sm text-muted-foreground">
             عمرك الآن: {computed.age.years} سنة، {computed.age.months} شهر،{" "}
@@ -243,13 +245,17 @@ export default function Home() {
       </div>
 
       {/* Birthdate */}
-      <div className="rounded-lg border bg-card p-4 space-y-2">
+      <div className="brand-card rounded-2xl p-4 space-y-2">
         <div className="text-sm font-bold">تاريخ الميلاد</div>
 
         {birthDate && !editBirth ? (
           <div className="flex items-center gap-3">
             <div className="text-sm text-muted-foreground">{birthDate}</div>
-            <Button variant="outline" onClick={() => setEditBirth(true)}>
+            <Button
+              variant="outline"
+              className="brand-outline-button pressable"
+              onClick={() => setEditBirth(true)}
+            >
               تعديل
             </Button>
           </div>
@@ -263,6 +269,7 @@ export default function Home() {
             />
             <Button
               variant="outline"
+              className="brand-primary-button pressable"
               disabled={savingBirth || !birthDate || !uid}
               onClick={async () => {
                 if (!uid || !birthDate) return;
@@ -279,13 +286,14 @@ export default function Home() {
       </div>
 
       {/* Compass */}
-      <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="brand-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-bold">
             البوصلة (الرسالة / الرؤية / القيم)
           </div>
           <Button
             variant="outline"
+            className="brand-primary-button touch-manipulation active:scale-[0.97] active:brightness-95"
             disabled={savingCompass || !uid}
             onClick={async () => {
               if (!uid) return;
@@ -373,7 +381,7 @@ export default function Home() {
                 {computed.past.map((y) => (
                   <button
                     key={y}
-                    className="h-10 w-10 rounded-full border bg-background text-xs font-bold hover:bg-muted"
+                    className="brand-chip pressable h-10 w-10 rounded-full text-xs font-bold"
                     onClick={() => openYear(y)}
                   >
                     {y}
@@ -387,7 +395,7 @@ export default function Home() {
 
             {/* Current big (real current year) */}
             <button
-              className="w-full rounded-xl border bg-card p-6 text-center hover:bg-muted"
+              className="brand-card brand-card-hover pressable w-full rounded-2xl p-6 text-center"
               onClick={() => openYear(computed.currentYear)}
             >
               <div className="text-sm text-muted-foreground">السنة الحالية</div>
@@ -405,7 +413,7 @@ export default function Home() {
                 {computed.future.map((y) => (
                   <button
                     key={y}
-                    className="h-10 w-10 rounded-full border bg-background text-sm font-bold hover:bg-muted"
+                    className="brand-chip pressable h-10 w-10 rounded-full text-sm font-bold"
                     onClick={() => openYear(y)}
                   >
                     {y}
@@ -417,12 +425,13 @@ export default function Home() {
         )}
       </div>
 
-      <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="brand-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-bold">التركيز الحالي</div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              className="brand-primary-button pressable"
               disabled={focusSaving}
               onClick={saveFocus}
             >
@@ -430,6 +439,7 @@ export default function Home() {
             </Button>
             <Button
               variant="outline"
+              className="brand-danger-button pressable"
               onClick={async () => {
                 if (!uid) return;
                 await clearFocusCurrent(uid);
@@ -468,7 +478,10 @@ export default function Home() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
+              <Button
+                variant="outline"
+                className="brand-outline-button pressable w-full justify-between"
+              >
                 {focusSelected.length
                   ? `مختار: ${focusSelected.length}`
                   : "اختر الأولويات"}
@@ -499,7 +512,7 @@ export default function Home() {
                 <Link
                   key={p.id}
                   href={`/card/${p.id}`}
-                  className="rounded-full border bg-background px-3 py-2 text-sm hover:bg-muted"
+                  className="brand-chip pressable rounded-full px-3 py-2 text-sm"
                 >
                   اذهب إلى: {p.label}
                 </Link>
@@ -509,7 +522,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="brand-card rounded-2xl p-4 space-y-3">
         <div className="text-sm font-bold">روتيناتي</div>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -517,7 +530,7 @@ export default function Home() {
             <Link
               key={b.id}
               href={`/block/${b.id}`}
-              className="rounded-lg border bg-background p-3 hover:bg-muted"
+              className="brand-card-hover pressable rounded-xl border border-border/80 bg-background/80 p-3 hover:bg-muted/70"
             >
               <div className="font-bold">{b.title}</div>
               <div className="text-xs text-muted-foreground">

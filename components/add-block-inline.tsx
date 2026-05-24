@@ -25,16 +25,17 @@ type BlockType =
   | "pdf_reader";
 
 const LABELS: Record<BlockType, string> = {
-  checklist: "قائمة مهام",
+  roadmap: "خارطة طريق(هدف)",
+
   // counter: "عداد",
-  playlist: "قائمة تشغيل",
-  roadmap: "خارطة طريق",
-  project: "مشروع",
-  notes: "ملاحظات",
-  habit: "عادة (Habit)",
-  routine: "روتين (جلسات)",
+  playlist: "قائمة تشغيل يوتيوب",
   youtube_channel: "قناة YouTube",
   pdf_reader: "قراءة PDF",
+  project: "مشروع",
+  notes: "ملاحظات",
+  checklist: "قائمة مهام",
+  habit: "عادة (Habit)",
+  routine: "روتين (جلسات)",
 };
 
 export function AddBlockInline({

@@ -23,9 +23,16 @@ import { NavLinks } from "./nav-links";
 
 function DesktopSidebar() {
   return (
-    <aside className="hidden min-h-dvh border-l bg-card/30 p-4 lg:block">
+    // <aside className="hidden min-h-dvh border-l bg-card/30 p-4 lg:block">
+
+    <aside className="hidden min-h-dvh border-l border-border/80 bg-sidebar/95 p-4 shadow-[inset_-1px_0_0_rgba(234,179,8,0.06)] lg:block">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-bold">مزرعة الآخرة</div>
+        {/* <div className="text-sm font-bold">مزرعة الآخرة</div> */}
+
+        <div className="bg-linear-to-l from-primary to-amber-200 bg-clip-text text-sm font-extrabold text-transparent">
+          مزرعة الآخرة
+        </div>
+
         <div className="flex items-center gap-2">
           <AuthButtons />
           <ThemeToggle />
@@ -43,9 +50,13 @@ function MobileTopbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur lg:hidden">
+    // <div className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur lg:hidden">
+
+    <div className="sticky top-0 z-50 border-b border-border/80 bg-background/85 shadow-[0_10px_35px_rgba(2,6,23,0.35)] backdrop-blur-xl lg:hidden">
       <div className="flex h-14 items-center justify-between px-3">
-        <div className="text-sm font-bold">مزرعة الآخرة</div>
+        <div className="bg-linear-to-l from-primary to-amber-200 bg-clip-text text-sm font-extrabold text-transparent">
+          مزرعة الآخرة
+        </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -57,7 +68,11 @@ function MobileTopbar() {
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="w-70">
+            {/* <SheetContent side="right" className="w-70"> */}
+            <SheetContent
+              side="right"
+              className="w-70 border-border/80 bg-card/95 backdrop-blur-xl"
+            >
               <SheetHeader>
                 <SheetTitle className="text-right">القائمة</SheetTitle>
               </SheetHeader>
@@ -109,7 +124,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    // <div className="min-h-dvh bg-background text-foreground">
+
+    <div className="min-h-dvh bg-background text-foreground [radial-gradient(circle_at_top,rgba(234,179,8,0.08),transparent_32rem)]">
       {!isAuthRoute ? <MobileTopbar /> : null}
 
       <div className={isAuthRoute ? "" : "lg:grid lg:grid-cols-[280px_1fr]"}>

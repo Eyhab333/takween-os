@@ -83,12 +83,15 @@ export const YoutubeIframePlayer = forwardRef<
     onEnded?: (payload: YoutubeProgressPayload) => void;
   }
 >(function YoutubeIframePlayer(props, ref) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<any>(null);
   const readyRef = useRef(false);
   const endedRef = useRef(props.onEnded);
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    videoId: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     endedRef.current = props.onEnded;
@@ -136,14 +139,27 @@ export const YoutubeIframePlayer = forwardRef<
 
   useEffect(() => {
     let cancelled = false;
+    const container = containerRef.current;
+
+    readyRef.current = false;
+    playerRef.current = null;
+
+    if (!container) return;
+
+    container.replaceChildren();
+
+    const host = document.createElement("div");
+    host.style.width = "100%";
+    host.style.height = "100%";
+    container.appendChild(host);
 
     loadYoutubeApi()
       .then((YT) => {
-        if (cancelled || !hostRef.current) return;
+        if (cancelled || !container.isConnected) return;
 
         const safeStart = Math.max(0, Math.floor(props.startSeconds || 0));
 
-        playerRef.current = new YT.Player(hostRef.current, {
+        playerRef.current = new YT.Player(host, {
           width: "100%",
           height: "100%",
           videoId: props.videoId,
@@ -157,6 +173,8 @@ export const YoutubeIframePlayer = forwardRef<
           },
           events: {
             onReady: () => {
+              if (cancelled) return;
+
               readyRef.current = true;
 
               if (safeStart > 0) {
@@ -167,6 +185,7 @@ export const YoutubeIframePlayer = forwardRef<
             },
 
             onStateChange: (event: any) => {
+              if (cancelled) return;
               if (event.data !== YT.PlayerState.ENDED) return;
 
               const duration = Number(playerRef.current?.getDuration?.() || 0);
@@ -179,33 +198,55 @@ export const YoutubeIframePlayer = forwardRef<
             },
 
             onError: () => {
-              setError("الفيديو لا يعمل داخل المشغّل المضمّن.");
+              if (!cancelled) {
+                setError({
+                  videoId: props.videoId,
+                  message: "الفيديو لا يعمل داخل المشغّل المضمّن.",
+                });
+              }
             },
           },
         });
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : "تعذر تحميل مشغّل يوتيوب.");
+        if (!cancelled) {
+          setError({
+            videoId: props.videoId,
+            message:
+              e instanceof Error ? e.message : "تعذر تحميل مشغّل يوتيوب.",
+          });
+        }
       });
 
     return () => {
       cancelled = true;
+      readyRef.current = false;
 
       try {
         playerRef.current?.destroy?.();
       } catch {}
-    };
-  }, []);
 
-  if (error) {
+      playerRef.current = null;
+
+      try {
+        container.replaceChildren();
+      } catch {}
+    };
+  }, [props.videoId, props.startSeconds, props.autoplay]);
+
+  const activeError = error?.videoId === props.videoId ? error.message : null;
+
+  if (activeError) {
     return (
-      <div className="rounded-xl border p-4 text-sm text-red-500">{error}</div>
+      <div className="rounded-xl border p-4 text-sm text-red-500">
+        {activeError}
+      </div>
     );
   }
 
   return (
     <div className="aspect-video w-full overflow-hidden rounded-2xl border bg-black">
-      <div ref={hostRef} className="h-full w-full" />
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   );
 });

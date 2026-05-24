@@ -259,6 +259,7 @@ export function YoutubePlaylistBlock(props: {
                 autoplay
                 onEnded={async ({ duration }) => {
                   if (!currentEpisode) return;
+                  if (!channel?.id || !playlist?.id) return;
                   if (completeInFlightRef.current) return;
 
                   completeInFlightRef.current = true;

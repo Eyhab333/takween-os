@@ -37,7 +37,9 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/90 backdrop-blur lg:hidden">
+    // <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/90 backdrop-blur lg:hidden">
+
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/90 shadow-[0_-12px_40px_rgba(2,6,23,0.75)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-1">
         {items.map((it) => {
           const active = isActive(pathname, it.href);
@@ -48,11 +50,19 @@ export function BottomNav() {
               key={it.href}
               href={it.href}
               aria-current={active ? "page" : undefined}
+              // className={[
+              //   "flex flex-col items-center justify-center gap-1 rounded-md px-2 py-2 text-xs",
+              //   active
+              //
+              //     ? "bg-muted font-medium"
+              //     : "text-muted-foreground hover:bg-muted/60",
+              // ].join(" ")}
+
               className={[
-                "flex flex-col items-center justify-center gap-1 rounded-md px-2 py-2 text-xs",
+                "flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs transition-all",
                 active
-                  ? "bg-muted font-medium"
-                  : "text-muted-foreground hover:bg-muted/60",
+                  ? "border-primary/35 bg-primary/10 text-primary shadow-[0_0_18px_rgba(234,179,8,0.14)]"
+                  : "border-transparent text-muted-foreground hover:bg-muted/70 hover:text-foreground",
               ].join(" ")}
             >
               <Icon className="h-5 w-5" />

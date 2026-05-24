@@ -46,16 +46,24 @@ export function YearCalendar({
   year: number;
 }) {
   const [doneDates, setDoneDates] = useState<string[]>([]);
+  const [currentYear] = useState(() => new Date().getFullYear());
+  const isPastYear = year < currentYear;
 
   useEffect(() => {
+    if (isPastYear) return;
+
     const ref = doc(db, "tenants", tenantId, "nodes", yearCardId);
     return onSnapshot(ref, (snap) => {
       const d = snap.exists() ? (snap.data() as any) : {};
       setDoneDates(Array.isArray(d.doneDates) ? d.doneDates : []);
     });
-  }, [tenantId, yearCardId]);
+  }, [tenantId, yearCardId, isPastYear]);
 
-  const doneSet = useMemo(() => new Set(doneDates), [doneDates]);
+  const doneSet = useMemo(() => {
+    if (isPastYear) return new Set<string>();
+    return new Set(doneDates);
+  }, [isPastYear, doneDates]);
+
   const totalDays = isLeap(year) ? 366 : 365;
   const doneCount = doneSet.size;
 
@@ -76,6 +84,24 @@ export function YearCalendar({
     );
     for (let d = 1; d <= dim; d++) cells.push({ d });
     return cells;
+  }
+
+  if (isPastYear) {
+    return (
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xl font-bold">{year}</div>
+          <div className="rounded-full border bg-muted px-3 py-1 text-xs text-muted-foreground">
+            سنة سابقة
+          </div>
+        </div>
+
+        <div className="rounded-lg border bg-background p-3 text-sm text-muted-foreground">
+          هذه سنة سابقة، لذلك تم إغلاق التقويم الخاص بها. يمكنك إضافة بلوكات
+          وملاحظات داخل هذه السنة بشكل عادي.
+        </div>
+      </div>
+    );
   }
 
   return (
