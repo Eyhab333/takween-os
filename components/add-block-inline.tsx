@@ -22,20 +22,22 @@ type BlockType =
   | "habit"
   | "routine"
   | "youtube_channel"
-  | "pdf_reader";
+  | "pdf_reader"
+  | "link";
 
 const LABELS: Record<BlockType, string> = {
   roadmap: "خارطة طريق(هدف)",
 
   // counter: "عداد",
   playlist: "قائمة تشغيل يوتيوب",
-  youtube_channel: "قناة YouTube",
-  pdf_reader: "قراءة PDF",
+  youtube_channel: "قناة يوتيوب",
+  pdf_reader: "قراءة كتاب PDF",
   project: "مشروع",
   notes: "ملاحظات",
   checklist: "قائمة مهام",
   habit: "عادة (Habit)",
   routine: "روتين (جلسات)",
+  link: "رابط موقع خارجي",
 };
 
 export function AddBlockInline({
@@ -47,7 +49,7 @@ export function AddBlockInline({
   parentId: string;
   onCreated?: () => void;
 }) {
-  const [type, setType] = useState<BlockType>("checklist");
+  const [type, setType] = useState<BlockType>("roadmap");
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
 

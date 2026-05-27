@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -8,6 +9,7 @@ import { doc, getDoc } from "firebase/firestore";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { ChecklistBlock } from "@/components/blocks/checklist-block";
 import { PlaylistBlock } from "@/components/blocks/playlist-block";
@@ -20,8 +22,10 @@ import { RoutineBlock } from "@/components/blocks/routine-block";
 import { YoutubeChannelBlock } from "@/components/blocks/youtube-channel-block";
 import { YoutubePlaylistBlock } from "@/components/blocks/youtube-playlist-block";
 
+import { linkDoneOnce, linkUndoOnce, saveLinkBlock } from "@/lib/link-actions";
 import { renameNodeTitle } from "@/lib/node-actions";
 import { archiveSubtree } from "@/lib/archive-subtree";
+
 const PdfReaderBlock = dynamic(
   () =>
     import("@/components/blocks/pdf-reader-block").then(
@@ -36,6 +40,172 @@ const PdfReaderBlock = dynamic(
     ),
   },
 );
+
+function normalizeExternalUrl(url: string) {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  return `https://${trimmed}`;
+}
+
+function LinkBlock({
+  tenantId,
+  blockId,
+  block,
+}: {
+  tenantId: string;
+  blockId: string;
+  block: any;
+}) {
+  const initialUrl = typeof block?.linkUrl === "string" ? block.linkUrl : "";
+  const initialDoneCount =
+    typeof block?.linkDoneCount === "number" ? block.linkDoneCount : 0;
+  const initialLastDoneAt =
+    typeof block?.linkLastDoneAt === "number" ? block.linkLastDoneAt : null;
+
+  const [url, setUrl] = useState(initialUrl);
+  const [savedUrl, setSavedUrl] = useState(initialUrl);
+
+  const [doneCount, setDoneCount] = useState<number>(initialDoneCount);
+
+  const [lastDoneAt, setLastDoneAt] = useState<number | null>(
+    initialLastDoneAt,
+  );
+
+  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const nextUrl = typeof block?.linkUrl === "string" ? block.linkUrl : "";
+    const nextDoneCount =
+      typeof block?.linkDoneCount === "number" ? block.linkDoneCount : 0;
+    const nextLastDoneAt =
+      typeof block?.linkLastDoneAt === "number" ? block.linkLastDoneAt : null;
+
+    setUrl(nextUrl);
+    setSavedUrl(nextUrl);
+    setDoneCount(nextDoneCount);
+    setLastDoneAt(nextLastDoneAt);
+  }, [block?.linkUrl, block?.linkDoneCount, block?.linkLastDoneAt]);
+
+  const normalizedSavedUrl = normalizeExternalUrl(savedUrl);
+  const canOpen = normalizedSavedUrl.length > 0;
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-4">
+      <div className="space-y-2">
+        <div className="text-sm font-bold">الرابط الخارجي</div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            dir="ltr"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://example.com"
+          />
+
+          <Button
+            variant="outline"
+            disabled={saving}
+            onClick={async () => {
+              const normalized = normalizeExternalUrl(url);
+
+              setSaving(true);
+              try {
+                await saveLinkBlock({
+                  tenantId,
+                  blockId,
+                  url: normalized,
+                });
+
+                setUrl(normalized);
+                setSavedUrl(normalized);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? "..." : "حفظ"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {canOpen ? (
+          <Button asChild>
+            <a
+              href={normalizedSavedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              فتح الرابط
+            </a>
+          </Button>
+        ) : (
+          <Button disabled>فتح الرابط</Button>
+        )}
+
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const now = Date.now();
+
+            try {
+              await linkDoneOnce({
+                tenantId,
+                blockId,
+              });
+
+              setDoneCount((cur) => cur + 1);
+              setLastDoneAt(now);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          تم مرة
+        </Button>
+
+        <Button
+          variant="outline"
+          disabled={busy || doneCount <= 0}
+          onClick={async () => {
+            setBusy(true);
+
+            try {
+              await linkUndoOnce({
+                tenantId,
+                blockId,
+              });
+
+              setDoneCount((cur) => Math.max(0, cur - 1));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          تراجع مرة
+        </Button>
+      </div>
+
+      <div className="rounded-lg border bg-background p-3 text-sm">
+        <div className="font-bold">
+          الحالة: {doneCount > 0 ? `تم ${doneCount} مرة` : "لم يتم بعد"}
+        </div>
+
+        {lastDoneAt ? (
+          <div className="mt-1 text-xs text-muted-foreground">
+            آخر إتمام: {new Date(lastDoneAt).toLocaleString("ar")}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export default function BlockPage() {
   const { id } = useParams<{ id: string }>();
@@ -186,6 +356,8 @@ export default function BlockPage() {
         <YoutubePlaylistBlock tenantId={tenantId} blockId={id} />
       ) : blockType === "pdf_reader" ? (
         <PdfReaderBlock tenantId={tenantId} blockId={id} block={blockData} />
+      ) : blockType === "link" ? (
+        <LinkBlock tenantId={tenantId} blockId={id} block={blockData} />
       ) : blockType === "roadmap" ? (
         <RoadmapBlock tenantId={tenantId} blockId={id} />
       ) : blockType === "playlist" ? (

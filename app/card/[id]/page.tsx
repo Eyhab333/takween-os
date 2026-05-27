@@ -22,6 +22,7 @@ import { YearCalendar } from "@/components/special/year-calendar";
 
 import { archiveSubtree } from "@/lib/archive-subtree";
 import { Button } from "@/components/ui/button";
+import { getBlockTypeLabel } from "@/lib/block-type-labels";
 
 type NodeRow = {
   id: string;
@@ -131,7 +132,7 @@ export default function CardPage() {
             >
               <div className="font-bold">{b.title}</div>
               <div className="text-xs text-muted-foreground">
-                {b.blockType ?? "block"}
+                {getBlockTypeLabel(b.blockType)}
               </div>
             </Link>
 

@@ -19,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { archiveSubtree } from "@/lib/archive-subtree";
+import { getBlockTypeLabel } from "@/lib/block-type-labels";
 
 type NodeRow = {
   id: string;
@@ -106,7 +107,7 @@ export default function StagePage() {
             >
               <div className="font-bold">{b.title}</div>
               <div className="text-xs text-muted-foreground">
-                {b.blockType ?? "block"}
+                {getBlockTypeLabel(b.blockType)}
               </div>
             </Link>
 

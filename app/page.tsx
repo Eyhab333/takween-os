@@ -26,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getBlockTypeLabel } from "@/lib/block-type-labels";
 
 function computeAgeYMD(birth: Date, now: Date) {
   let y = now.getFullYear() - birth.getFullYear();
@@ -339,7 +340,7 @@ export default function Home() {
 
               <Link
                 href="/vision"
-                className="text-sm text-primary underline-offset-4 hover:underline"
+                className="brand-chip pressable rounded-full px-3 py-2 text-sm"
               >
                 تنفيذ الرؤية
               </Link>
@@ -534,7 +535,7 @@ export default function Home() {
             >
               <div className="font-bold">{b.title}</div>
               <div className="text-xs text-muted-foreground">
-                {b.blockType === "habit" ? "Habit" : "Routine"}{" "}
+                {getBlockTypeLabel(b.blockType)}{" "}
                 {b.updatedAt
                   ? `• ${new Date(b.updatedAt).toLocaleString("ar")}`
                   : ""}
@@ -543,7 +544,7 @@ export default function Home() {
           ))}
           {routines.length === 0 && (
             <div className="text-muted-foreground">
-              لا يوجد Habits أو Routines بعد.
+              لا يوجد عادات أو روتينات بعد.
             </div>
           )}
         </div>

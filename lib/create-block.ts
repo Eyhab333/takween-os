@@ -116,8 +116,6 @@
 //   return id;
 // }
 
-
-
 import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -129,16 +127,17 @@ function uid() {
 }
 
 export type BlockType =
+  | "roadmap"
   | "checklist"
   | "counter"
   | "playlist"
-  | "roadmap"
   | "project"
   | "notes"
   | "habit"
   | "routine"
   | "youtube_channel"
-  | "pdf_reader";
+  | "pdf_reader"
+  | "link";
 
 export async function createBlock(params: {
   tenantId: string;
@@ -179,6 +178,10 @@ export async function createBlock(params: {
     counterCurrent: 0,
     counterTarget: null,
 
+    linkUrl: "",
+    linkDoneCount: 0,
+    linkLastDoneAt: null,
+
     routineSteps: [],
 
     sourceType: null,
@@ -211,10 +214,8 @@ export async function createBlock(params: {
     currentPage: 1,
     readingPercent: 0,
     completedAt: null,
-    readyToCompleteRun: false
+    readyToCompleteRun: false,
   });
 
   return id;
 }
-
-

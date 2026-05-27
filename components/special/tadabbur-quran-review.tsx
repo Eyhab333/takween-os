@@ -567,7 +567,9 @@ const LockedReviewCard = memo(function LockedReviewCard({
           {entry.timestampLabel || "بدون تاريخ"}
         </div>
       </div>
-      <div className="mt-1 text-muted-foreground">{formatRange(entry)}</div>
+      <div className="mt-1 text-muted-foreground font-bold">
+        {formatRange(entry)}
+      </div>
     </div>
   );
 });
