@@ -4,6 +4,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  BookmarkCheck,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CornerDownLeft,
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 
 import { storage } from "@/lib/firebase";
 import {
@@ -236,7 +247,6 @@ export function PdfReaderBlock({
   const [pageInput, setPageInput] = useState(String(initialCurrentPage));
 
   const [scale, setScale] = useState(1);
-
   const [isReaderFullscreen, setIsReaderFullscreen] = useState(false);
 
   const viewerRef = useRef<HTMLDivElement | null>(null);
@@ -487,15 +497,11 @@ export function PdfReaderBlock({
     : "space-y-4 rounded-xl border bg-card p-4";
 
   const toolbarClassName = isReaderFullscreen
-    ? "flex shrink-0 flex-wrap items-center gap-2 rounded-xl border bg-card p-2 shadow-sm"
-    : "flex flex-wrap items-center gap-2";
-
-  const zoomToolbarClassName = isReaderFullscreen
-    ? "flex shrink-0 flex-wrap items-center gap-2 rounded-xl border bg-card p-2"
+    ? "fixed inset-x-0 bottom-4 z-[110] mx-auto flex w-fit items-center gap-2 rounded-full border bg-background/90 p-2 shadow-lg backdrop-blur"
     : "flex flex-wrap items-center gap-2";
 
   const viewerClassName = isReaderFullscreen
-    ? "min-h-0 flex-1 overflow-auto rounded-xl border bg-background p-2"
+    ? "min-h-0 flex-1 overflow-auto rounded-xl border bg-background p-2 pb-24"
     : "w-full overflow-x-auto overflow-y-hidden rounded-xl border bg-background p-2 sm:p-3";
 
   const viewerInnerClassName = isReaderFullscreen
@@ -543,7 +549,7 @@ export function PdfReaderBlock({
         </div>
       </div>
 
-      {uiError ? (
+      {!isReaderFullscreen && uiError ? (
         <ErrorBox error={uiError} onDismiss={() => setUiError(null)} />
       ) : null}
 
@@ -589,90 +595,157 @@ export function PdfReaderBlock({
           <div className={toolbarClassName}>
             <Button
               variant="outline"
-              onClick={() => setIsReaderFullscreen((v) => !v)}
-            >
-              {isReaderFullscreen ? "خروج" : "ملء الشاشة"}
-            </Button>
-
-            <Button
-              variant="outline"
+              size="icon"
               disabled={page <= 1}
               onClick={() => goToPage(page - 1)}
+              title="السابق"
+              aria-label="السابق"
             >
-              السابق
+              <ChevronRight className="h-5 w-5" />
             </Button>
 
             <Button
               variant="outline"
+              size="icon"
               disabled={totalPages > 0 ? page >= totalPages : false}
               onClick={() => goToPage(page + 1)}
+              title="التالي"
+              aria-label="التالي"
             >
-              التالي
+              <ChevronLeft className="h-5 w-5" />
             </Button>
 
-            <div className="flex items-center gap-2">
-              <Input
-                value={pageInput}
-                inputMode="numeric"
-                className="w-24"
-                onChange={(e) => setPageInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    goToPage(Number(pageInput));
+            {isReaderFullscreen ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setScale((v) => Math.max(0.8, +(v - 0.1).toFixed(1)))
                   }
-                }}
-              />
+                  title="تصغير"
+                  aria-label="تصغير"
+                >
+                  <ZoomOut className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setScale((v) => Math.min(1.8, +(v + 0.1).toFixed(1)))
+                  }
+                  title="تكبير"
+                  aria-label="تكبير"
+                >
+                  <ZoomIn className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsReaderFullscreen(false)}
+                  title="الخروج من ملء الشاشة"
+                  aria-label="الخروج من ملء الشاشة"
+                >
+                  <Minimize2 className="h-5 w-5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={pageInput}
+                    inputMode="numeric"
+                    className="w-24"
+                    onChange={(e) => setPageInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        goToPage(Number(pageInput));
+                      }
+                    }}
+                  />
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => goToPage(Number(pageInput))}
+                    title="اذهب"
+                    aria-label="اذهب"
+                  >
+                    <CornerDownLeft className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <Button disabled={saving} onClick={saveProgress}>
+                  {saving ? "جارٍ الحفظ..." : "حفظ موضع القراءة"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={resumeReading}
+                  title="تابع القراءة"
+                  aria-label="تابع القراءة"
+                >
+                  <BookmarkCheck className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  disabled={completingRun}
+                  onClick={completeRun}
+                  title="إنهاء الختمة"
+                  aria-label="إنهاء الختمة"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsReaderFullscreen(true)}
+                  title="ملء الشاشة"
+                  aria-label="ملء الشاشة"
+                >
+                  <Maximize2 className="h-5 w-5" />
+                </Button>
+              </>
+            )}
+          </div>
+
+          {!isReaderFullscreen && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  setScale((v) => Math.max(0.8, +(v - 0.1).toFixed(1)))
+                }
+                title="تصغير"
+                aria-label="تصغير"
+              >
+                <ZoomOut className="h-5 w-5" />
+              </Button>
+
+              <div className="text-sm text-muted-foreground">
+                التكبير: {Math.round(scale * 100)}%
+              </div>
 
               <Button
                 variant="outline"
-                onClick={() => goToPage(Number(pageInput))}
+                size="icon"
+                onClick={() =>
+                  setScale((v) => Math.min(1.8, +(v + 0.1).toFixed(1)))
+                }
+                title="تكبير"
+                aria-label="تكبير"
               >
-                اذهب
+                <ZoomIn className="h-5 w-5" />
               </Button>
             </div>
-
-            <Button disabled={saving} onClick={saveProgress}>
-              {saving ? "جارٍ الحفظ..." : "حفظ موضع القراءة"}
-            </Button>
-
-            <Button variant="outline" onClick={resumeReading}>
-              تابع القراءة
-            </Button>
-
-            <Button
-              variant="destructive"
-              disabled={completingRun}
-              onClick={completeRun}
-            >
-              {completingRun ? "جارٍ الإنهاء..." : "إنهاء الختمة"}
-            </Button>
-          </div>
-
-          <div className={zoomToolbarClassName}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setScale((v) => Math.max(0.8, +(v - 0.1).toFixed(1)))
-              }
-            >
-              تصغير
-            </Button>
-
-            <div className="text-sm text-muted-foreground">
-              التكبير: {Math.round(scale * 100)}%
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setScale((v) => Math.min(1.8, +(v + 0.1).toFixed(1)))
-              }
-            >
-              تكبير
-            </Button>
-          </div>
+          )}
 
           <div ref={viewerRef} dir="ltr" className={viewerClassName}>
             <div className={viewerInnerClassName}>

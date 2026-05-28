@@ -20,9 +20,10 @@ type Item = {
 const items: Item[] = [
   { href: "/", label: "الرئيسية", icon: Home },
   { href: "/vision", label: "الرؤية", icon: Compass },
-  { href: "/weekly", label: "اسبوعي", icon: Activity },
+
   { href: "/ibadah", label: "الشريعة", icon: BookOpen },
   { href: "/aspects", label: "الجوانب", icon: Layers },
+  { href: "/weekly", label: "اسبوعي", icon: Activity },
   // { href: "/explorer", label: "المستكشف", icon: Compass },
   // { href: "/activity", label: "النشاط", icon: Activity },
   //{ href: "/settings", label: "الإعدادات", icon: Settings },

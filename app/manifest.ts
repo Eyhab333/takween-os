@@ -4,11 +4,12 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "مزرعة الآخرة",
     short_name: "مزرعة الآخرة",
-    description: "منصة شخصية لإدارة الحياة، العبادات، الجوانب، العادات، والروتينات.",
+    description:
+      "منصة شخصية لإدارة الحياة، العبادات، الجوانب، العادات، والروتينات.",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    orientation: "any",
+    orientation: "natural",
     dir: "rtl",
     lang: "ar",
     background_color: "#020617",

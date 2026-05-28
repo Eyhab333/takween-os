@@ -14,7 +14,7 @@ import {
 
 type BlockType =
   | "checklist"
-  // | "counter"
+  | "counter"
   | "playlist"
   | "roadmap"
   | "project"
@@ -27,8 +27,6 @@ type BlockType =
 
 const LABELS: Record<BlockType, string> = {
   roadmap: "خارطة طريق(هدف)",
-
-  // counter: "عداد",
   playlist: "قائمة تشغيل يوتيوب",
   youtube_channel: "قناة يوتيوب",
   pdf_reader: "قراءة كتاب PDF",
@@ -38,6 +36,7 @@ const LABELS: Record<BlockType, string> = {
   habit: "عادة (Habit)",
   routine: "روتين (جلسات)",
   link: "رابط موقع خارجي",
+  counter: "عداد استغفار",
 };
 
 export function AddBlockInline({

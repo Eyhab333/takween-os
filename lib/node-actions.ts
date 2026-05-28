@@ -15,3 +15,15 @@ export async function renameNodeTitle(params: {
     version: increment(1),
   });
 }
+
+export async function toggleNodeDone(params: {
+  tenantId: string;
+  nodeId: string;
+  currentDone: boolean;
+}) {
+  await updateDoc(doc(db, "tenants", params.tenantId, "nodes", params.nodeId), {
+    done: !params.currentDone,
+    updatedAt: Date.now(),
+    version: increment(1),
+  });
+}

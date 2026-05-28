@@ -39,7 +39,7 @@ type StageRow = {
 const STATUS_LABEL: Record<StageStatus, string> = {
   not_started: "لم تبدأ",
   in_progress: "جاري",
-  done: "تم",
+  done: "✅",
 };
 
 export function RoadmapBlock({

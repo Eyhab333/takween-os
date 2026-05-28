@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { archiveSubtree } from "@/lib/archive-subtree";
 import { getBlockTypeLabel } from "@/lib/block-type-labels";
+import { toggleNodeDone } from "@/lib/node-actions";
 
 type NodeRow = {
   id: string;
@@ -28,6 +29,7 @@ type NodeRow = {
   type: string;
   parentId: string | null;
   blockType?: string;
+  done?: boolean;
 };
 
 export default function StagePage() {
@@ -37,6 +39,8 @@ export default function StagePage() {
   const [loading, setLoading] = useState(true);
   const [stageTitle, setStageTitle] = useState("");
   const [blocks, setBlocks] = useState<NodeRow[]>([]);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadBlocks = useCallback(
     async (tid: string) => {
@@ -48,11 +52,52 @@ export default function StagePage() {
         where("archived", "==", false),
         orderBy("orderKey"),
       );
+
       const snap = await getDocs(qBlocks);
       setBlocks(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
     },
     [id],
   );
+
+  async function toggleBlockDone(block: NodeRow) {
+    if (!tenantId) return;
+
+    const currentDone = block.done === true;
+
+    setTogglingId(block.id);
+    try {
+      await toggleNodeDone({
+        tenantId,
+        nodeId: block.id,
+        currentDone,
+      });
+
+      setBlocks((cur) =>
+        cur.map((b) => (b.id === block.id ? { ...b, done: !currentDone } : b)),
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  async function removeBlock(blockId: string) {
+    if (!tenantId) return;
+
+    const ok = window.confirm(
+      "هل تريد حذف هذا الكارت؟ سيتم إخفاؤه مع كل ما بداخله.",
+    );
+
+    if (!ok) return;
+
+    setDeletingId(blockId);
+    try {
+      await archiveSubtree(tenantId, blockId);
+
+      setBlocks((cur) => cur.filter((b) => b.id !== blockId));
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     return auth.onAuthStateChanged(async (u) => {
@@ -68,6 +113,7 @@ export default function StagePage() {
 
       const ref = doc(db, "tenants", tid, "nodes", id);
       const snap = await getDoc(ref);
+
       setStageTitle(
         snap.exists()
           ? ((snap.data() as any).title as string)
@@ -81,6 +127,7 @@ export default function StagePage() {
 
   if (!tenantId)
     return <div className="text-muted-foreground">سجّل الدخول.</div>;
+
   if (loading)
     return <div className="text-muted-foreground">جارٍ التحميل...</div>;
 
@@ -98,36 +145,69 @@ export default function StagePage() {
         />
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {blocks.map((b) => (
-          <div key={b.id} className="flex items-stretch gap-2">
-            <Link
-              href={`/block/${b.id}`}
-              className="flex-1 rounded-lg border bg-card px-4 py-3 hover:bg-muted"
-            >
-              <div className="font-bold">{b.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {getBlockTypeLabel(b.blockType)}
+      <div className="space-y-2">
+        {blocks.map((b, index) => {
+          const isLast = index === blocks.length - 1;
+          const done = b.done === true;
+
+          return (
+            <div key={b.id} className="space-y-2">
+              <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-bold">
+                    {index + 1}
+                  </div>
+
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Link
+                        href={`/block/${b.id}`}
+                        className="min-w-0 font-bold hover:underline"
+                      >
+                        {b.title}
+                      </Link>
+
+                      {done && <span title="تم">✅</span>}
+                    </div>
+
+                    {b.blockType && (
+                      <div className="text-xs text-muted-foreground">
+                        {getBlockTypeLabel(b.blockType)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={togglingId === b.id}
+                    onClick={() => toggleBlockDone(b)}
+                  >
+                    {togglingId === b.id ? "..." : done ? "إلغاء التمام" : "تم"}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={deletingId === b.id}
+                    onClick={() => removeBlock(b.id)}
+                  >
+                    {deletingId === b.id ? "..." : "حذف"}
+                  </Button>
+                </div>
               </div>
-            </Link>
 
-            <Button
-              variant="outline"
-              className="h-auto"
-              onClick={async () => {
-                const ok = window.confirm(
-                  "حذف هذا البلوك؟ (سيتم أرشفة كل ما تحته)",
-                );
-                if (!ok) return;
+              {!isLast && (
+                <div className="flex justify-center text-2xl text-muted-foreground">
+                  ↓
+                </div>
+              )}
+            </div>
+          );
+        })}
 
-                await archiveSubtree(tenantId, b.id);
-                await loadBlocks(tenantId);
-              }}
-            >
-              حذف
-            </Button>
-          </div>
-        ))}
         {blocks.length === 0 && (
           <div className="text-muted-foreground">لا يوجد Blocks بعد.</div>
         )}

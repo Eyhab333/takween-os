@@ -106,6 +106,7 @@ import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 type NodeRow = {
   id: string;
   title: string;
+  description?: string;
   orderKey: string;
   type: string;
   parentId: string | null;
@@ -183,6 +184,12 @@ export default function AspectsPage() {
             className="block rounded-lg border bg-card px-4 py-3 hover:bg-muted"
           >
             <div className="font-bold">{c.title}</div>
+
+            {c.description && (
+              <div className="mt-1 text-sm leading-6 text-muted-foreground">
+                {c.description}
+              </div>
+            )}
           </Link>
         ))}
       </div>
