@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PwaInstallButton } from "@/components/pwa-install-button";
-import { ThemeToggle } from "@/components/theme-toggle";
+// import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButtons } from "@/components/auth-buttons";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ function DesktopSidebar() {
   return (
     // <aside className="hidden min-h-dvh border-l bg-card/30 p-4 lg:block">
 
-    <aside className="hidden min-h-dvh border-l border-border/80 bg-sidebar/95 p-4 shadow-[inset_-1px_0_0_rgba(234,179,8,0.06)] lg:block">
+    // <aside className="hidden min-h-dvh border-l border-border/80 bg-sidebar/95 p-4 shadow-[inset_-1px_0_0_rgba(234,179,8,0.06)] lg:block">
+
+    <aside className="hidden border-l border-border/80 bg-sidebar/95 p-4 shadow-[inset_-1px_0_0_rgba(234,179,8,0.06)] lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start lg:overflow-y-auto">
       <div className="flex items-center justify-between">
         {/* <div className="text-sm font-bold">مزرعة الآخرة</div> */}
 
@@ -35,7 +37,7 @@ function DesktopSidebar() {
 
         <div className="flex items-center gap-2">
           <AuthButtons />
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
         </div>
       </div>
 
@@ -59,7 +61,7 @@ function MobileTopbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
