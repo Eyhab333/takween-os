@@ -1,7 +1,7 @@
 import { db } from "@/lib/firebase";
 import { doc, increment, runTransaction, updateDoc } from "firebase/firestore";
 
-function normalizeExternalUrl(url: string) {
+export function normalizeExternalUrl(url: string) {
   const trimmed = url.trim();
   if (!trimmed) return "";
 
@@ -10,15 +10,75 @@ function normalizeExternalUrl(url: string) {
   return `https://${trimmed}`;
 }
 
+export function validateExternalUrl(url: string) {
+  const normalized = normalizeExternalUrl(url);
+
+  if (!normalized) {
+    return {
+      ok: false,
+      url: "",
+      message: "اكتب الرابط أولًا.",
+    };
+  }
+
+  try {
+    const parsed = new URL(normalized);
+
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return {
+        ok: false,
+        url: normalized,
+        message: "الرابط يجب أن يبدأ بـ http أو https.",
+      };
+    }
+
+    if (!parsed.hostname.includes(".")) {
+      return {
+        ok: false,
+        url: normalized,
+        message: "الرابط غير مكتمل. مثال صحيح: example.com",
+      };
+    }
+
+    return {
+      ok: true,
+      url: normalized,
+      message: "",
+    };
+  } catch {
+    return {
+      ok: false,
+      url: normalized,
+      message: "صيغة الرابط غير صحيحة.",
+    };
+  }
+}
+
 export async function saveLinkBlock(params: {
   tenantId: string;
   blockId: string;
+  title: string;
+  description: string;
   url: string;
 }) {
+  const title = params.title.trim();
+  const description = params.description.trim();
+  const checked = validateExternalUrl(params.url);
+
+  if (!title) {
+    throw new Error("اكتب عنوان الرابط أولًا.");
+  }
+
+  if (!checked.ok) {
+    throw new Error(checked.message);
+  }
+
   await updateDoc(
     doc(db, "tenants", params.tenantId, "nodes", params.blockId),
     {
-      linkUrl: normalizeExternalUrl(params.url),
+      linkTitle: title,
+      linkDescription: description,
+      linkUrl: checked.url,
       updatedAt: Date.now(),
       version: increment(1),
     },
