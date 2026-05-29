@@ -28,6 +28,7 @@ import {
 
 import { renameNodeTitle } from "@/lib/node-actions";
 import { archiveSubtree } from "@/lib/archive-subtree";
+import { celebrateDone } from "@/lib/celebrate";
 
 type StageRow = {
   id: string;
@@ -188,9 +189,16 @@ export function RoadmapBlock({
 
                   <Select
                     value={status}
-                    onValueChange={(v) =>
-                      setStageStatus(tenantId, s.id, v as StageStatus)
-                    }
+                    onValueChange={async (v) => {
+                      const nextStatus = v as StageStatus;
+                      const wasDone = status === "done";
+
+                      await setStageStatus(tenantId, s.id, nextStatus);
+
+                      if (!wasDone && nextStatus === "done") {
+                        celebrateDone("big");
+                      }
+                    }}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue />

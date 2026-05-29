@@ -21,6 +21,7 @@ import {
   routineToggleStep,
   routineFinishSession,
 } from "@/lib/routine-actions";
+import { celebrateDone } from "@/lib/celebrate";
 
 type Step = { id: string; label: string };
 
@@ -105,6 +106,9 @@ export function RoutineBlock({
       percent,
     });
     setBusy(false);
+    if (doneCount) {
+      celebrateDone("soft");
+    }
   }
 
   return (

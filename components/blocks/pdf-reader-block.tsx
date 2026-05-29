@@ -25,6 +25,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { celebrateDone } from "@/lib/celebrate";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -474,7 +475,7 @@ export function PdfReaderBlock({
         tenantId,
         blockId,
       });
-
+      celebrateDone("big");
       setRunsCompleted((v) => v + 1);
       setCurrentRun((v) => v + 1);
       setPage(1);

@@ -6,6 +6,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { celebrateDone } from "./celebrate";
 
 function extractYouTubeVideoId(url?: string) {
   const value = String(url || "").trim();
@@ -93,6 +94,10 @@ export async function toggleEpisodeDone(
     updatedAt: now,
     version: increment(1),
   });
+
+  if (!currentDone) {
+    celebrateDone("soft");
+  }
 }
 
 export async function markEpisodeOpened(
@@ -119,13 +124,16 @@ export async function savePlaylistEpisodeProgress(params: {
 }) {
   const now = Date.now();
 
-  await updateDoc(doc(db, "tenants", params.tenantId, "nodes", params.episodeId), {
-    watchSeconds: Math.max(0, Math.round(params.watchSeconds || 0)),
-    watchPercent: Math.max(
-      0,
-      Math.min(100, Math.round(params.watchPercent || 0)),
-    ),
-    updatedAt: now,
-    version: increment(1),
-  });
+  await updateDoc(
+    doc(db, "tenants", params.tenantId, "nodes", params.episodeId),
+    {
+      watchSeconds: Math.max(0, Math.round(params.watchSeconds || 0)),
+      watchPercent: Math.max(
+        0,
+        Math.min(100, Math.round(params.watchPercent || 0)),
+      ),
+      updatedAt: now,
+      version: increment(1),
+    },
+  );
 }

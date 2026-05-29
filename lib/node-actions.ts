@@ -1,5 +1,6 @@
 import { db } from "@/lib/firebase";
 import { doc, increment, updateDoc } from "firebase/firestore";
+import { celebrateDone } from "./celebrate";
 
 export async function renameNodeTitle(params: {
   tenantId: string;
@@ -26,4 +27,8 @@ export async function toggleNodeDone(params: {
     updatedAt: Date.now(),
     version: increment(1),
   });
+
+  if (!params.currentDone) {
+    celebrateDone("big");
+  }
 }

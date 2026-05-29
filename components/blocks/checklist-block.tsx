@@ -12,6 +12,8 @@ import {
 } from "firebase/firestore";
 import { addChecklistItem, toggleChecklistDone } from "@/lib/checklist-actions";
 
+import { celebrateDone } from "@/lib/celebrate";
+
 type ItemRow = { id: string; title: string; done?: boolean; orderKey?: string };
 
 export function ChecklistBlock({
@@ -53,6 +55,9 @@ export function ChecklistBlock({
 
   async function toggleDone(itemId: string, currentDone: boolean) {
     await toggleChecklistDone(tenantId, itemId, currentDone);
+    if (!currentDone) {
+      celebrateDone("soft");
+    }
   }
 
   return (
@@ -81,13 +86,11 @@ export function ChecklistBlock({
             onClick={() => toggleDone(it.id, !!it.done)}
             className="flex w-full items-center justify-between rounded-md border bg-card px-3 py-2 text-right text-sm hover:bg-muted"
           >
-            <span
-              className={it.done ? "line-through text-muted-foreground" : ""}
-            >
+            <span className={it.done ? " text-muted-foreground" : ""}>
               {it.title}
             </span>
             <span className="text-xs text-muted-foreground">
-              {it.done ? "تم" : "لم يتم"}
+              {it.done ? "✅" : "لم يتم"}
             </span>
           </button>
         ))}
