@@ -181,7 +181,7 @@ export default function AspectsPage() {
           <Link
             key={c.id}
             href={`/card/${c.id}`}
-            className="block rounded-lg border bg-card px-4 py-3 hover:bg-muted"
+            className="block brand-card pressable rounded-lg border bg-card px-4 py-3 hover:bg-muted"
           >
             <div className="font-bold">{c.title}</div>
 

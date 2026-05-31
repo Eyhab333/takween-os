@@ -358,7 +358,7 @@ export default function WeeklyPage() {
           return (
             <div
               key={dayName}
-              className="rounded-lg border bg-card p-4 space-y-3"
+              className=" brand-card rounded-lg border bg-card p-4 space-y-3"
             >
               <div className="font-bold">{dayName}</div>
 

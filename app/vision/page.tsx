@@ -305,15 +305,15 @@ export default function VisionPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-4 space-y-2">
+      <div className="brand-card rounded-lg border bg-card p-4 space-y-2">
         <h1 className="text-2xl font-bold">تنفيذ الرؤية</h1>
         <p className="text-sm text-muted-foreground leading-7">
           هنا تتحول الرؤية إلى ممارسة عملية
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className=" grid gap-4 lg:grid-cols-2">
+        <div className=" brand-card rounded-lg border bg-card p-4 space-y-3">
           <div className="text-sm font-bold">تنفيذ اليوم — المهام اليومية</div>
 
           {todayDailyVisions.length === 0 ? (
@@ -344,7 +344,7 @@ export default function VisionPage() {
           )}
         </div>
 
-        <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div className="brand-card rounded-lg border bg-card p-4 space-y-3">
           <div className="text-sm font-bold">تنفيذ اليوم — اللوب المتوالي</div>
 
           {todayLoopVisions.length === 0 ? (
@@ -380,7 +380,7 @@ export default function VisionPage() {
       </div>
 
       <Collapsible open={formOpen} onOpenChange={setFormOpen}>
-        <div className="rounded-xl border bg-card shadow-sm">
+        <div className="brand-card rounded-xl border bg-card shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b p-4">
             <div className="space-y-1">
               <div className="font-bold">
@@ -548,7 +548,7 @@ export default function VisionPage() {
               setSectionOpenMap((cur) => ({ ...cur, [sectionKey]: open }))
             }
           >
-            <div className="space-y-3 rounded-xl border bg-card shadow-sm">
+            <div className=" brand-card space-y-3 rounded-xl border bg-card shadow-sm">
               <div className="flex items-center justify-between gap-3 p-4">
                 <div className="space-y-1">
                   <div className="text-lg font-bold">
@@ -604,7 +604,7 @@ export default function VisionPage() {
                         return (
                           <div
                             key={vision.id}
-                            className="rounded-lg border bg-card p-4 space-y-3"
+                            className="brand-card rounded-lg border bg-card p-4 space-y-3"
                           >
                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                               <div className="min-w-0 space-y-2">
@@ -788,7 +788,7 @@ export default function VisionPage() {
                                 ) : null}
 
                                 {vision.executionType === "sequential_loop" ? (
-                                  <div className="space-y-3">
+                                  <div className=" brand-card space-y-3">
                                     <div className="text-sm font-bold">
                                       اللوب المتوالي
                                     </div>

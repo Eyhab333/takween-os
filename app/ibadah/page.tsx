@@ -120,7 +120,7 @@ export default function IbadahPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
+      <div className=" space-y-1">
         <h1 className="text-2xl font-bold">{spaceTitle}</h1>
         <p className="text-muted-foreground">اختر قسمًا لعرض الكروت.</p>
       </div>
@@ -134,9 +134,11 @@ export default function IbadahPage() {
               key={s.id}
               onClick={() => openSection(s.id)}
               className={[
-                "rounded-lg border px-4 py-3 text-right transition",
+                " rounded-lg border px-4 py-3 text-right transition",
                 "hover:bg-muted",
-                active ? "bg-muted" : "bg-card",
+                active
+                  ? "border-primary/35 bg-primary/10 font-extrabold text-primary shadow-[0_0_18px_rgba(234,179,8,0.12)] "
+                  : "bg-card",
               ].join(" ")}
             >
               <div className="font-bold">{s.title}</div>
@@ -158,7 +160,7 @@ export default function IbadahPage() {
               <Link
                 key={c.id}
                 href={`/card/${c.id}`}
-                className="block rounded-lg border bg-card px-4 py-3 hover:bg-muted"
+                className="brand-card pressable block rounded-lg border bg-card px-4 py-3 hover:bg-muted"
               >
                 <div className="font-bold">{c.title}</div>
                 <div className="text-xs text-muted-foreground">{c.id}</div>

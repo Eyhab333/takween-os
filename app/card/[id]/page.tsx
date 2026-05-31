@@ -128,7 +128,7 @@ export default function CardPage() {
           <div key={b.id} className="flex items-stretch gap-2">
             <Link
               href={`/block/${b.id}`}
-              className="flex-1 rounded-lg border bg-card px-4 py-3 hover:bg-muted"
+              className="pressable brand-card flex-1 rounded-lg border bg-card px-4 py-3 hover:bg-muted"
             >
               <div className="font-bold">{b.title}</div>
               <div className="text-xs text-muted-foreground">
