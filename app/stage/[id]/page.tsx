@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { archiveSubtree } from "@/lib/archive-subtree";
 import { getBlockTypeLabel } from "@/lib/block-type-labels";
-import { toggleNodeDone } from "@/lib/node-actions";
+import { swapNodeOrderKeys, toggleNodeDone } from "@/lib/node-actions";
 
 type NodeRow = {
   id: string;
@@ -97,6 +97,34 @@ export default function StagePage() {
     } finally {
       setDeletingId(null);
     }
+  }
+
+  async function moveBlock(blockId: string, direction: "up" | "down") {
+    if (!tenantId) return;
+
+    const index = blocks.findIndex((b) => b.id === blockId);
+    if (index === -1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const current = blocks[index];
+    const target = blocks[targetIndex];
+
+    if (!target) return;
+    if (!current.orderKey || !target.orderKey) return;
+
+    await swapNodeOrderKeys({
+      tenantId,
+      firstNodeId: current.id,
+      firstOrderKey: current.orderKey,
+      secondNodeId: target.id,
+      secondOrderKey: target.orderKey,
+    });
+
+    setBlocks((cur) => {
+      const copy = [...cur];
+      [copy[index], copy[targetIndex]] = [copy[targetIndex], copy[index]];
+      return copy;
+    });
   }
 
   useEffect(() => {
@@ -179,6 +207,24 @@ export default function StagePage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={index === 0}
+                    onClick={() => moveBlock(b.id, "up")}
+                  >
+                    ↑
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isLast}
+                    onClick={() => moveBlock(b.id, "down")}
+                  >
+                    ↓
+                  </Button>
+
                   <Button
                     size="sm"
                     variant="outline"

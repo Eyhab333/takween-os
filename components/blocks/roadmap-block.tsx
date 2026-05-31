@@ -30,6 +30,11 @@ import { renameNodeTitle } from "@/lib/node-actions";
 import { archiveSubtree } from "@/lib/archive-subtree";
 import { celebrateDone } from "@/lib/celebrate";
 
+import {
+  calculateRoadmapProgress,
+  type RoadmapProgressResult,
+} from "@/lib/roadmap-progress";
+
 type StageRow = {
   id: string;
   title: string;
@@ -53,6 +58,10 @@ export function RoadmapBlock({
   const [stages, setStages] = useState<StageRow[]>([]);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const [progressBusy, setProgressBusy] = useState(false);
+  const [progress, setProgress] = useState<RoadmapProgressResult | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -78,6 +87,21 @@ export function RoadmapBlock({
     await addRoadmapStage(tenantId, blockId, title);
     setTitle("");
     setBusy(false);
+  }
+
+  async function showProgress() {
+    setProgressBusy(true);
+
+    try {
+      const result = await calculateRoadmapProgress({
+        tenantId,
+        roadmapBlockId: blockId,
+      });
+
+      setProgress(result);
+    } finally {
+      setProgressBusy(false);
+    }
   }
 
   function startEditStage(stage: StageRow) {
@@ -132,6 +156,49 @@ export function RoadmapBlock({
         </Button>
       </div>
 
+      <div className="rounded-lg border bg-card p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-bold">تقدم خارطة الطريق</div>
+            <div className="text-xs text-muted-foreground">
+              يتم الحساب فقط عند الضغط حتى لا يؤثر على سرعة تحميل الصفحة.
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={showProgress}
+            disabled={progressBusy}
+          >
+            {progressBusy ? "جارٍ الحساب..." : "عرض نسبة التقدم"}
+          </Button>
+        </div>
+
+        {progress && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              {/* <span>
+                المكتمل: {progress.done} / {progress.total}
+              </span> */}
+              <span className="font-bold">{progress.percent}%</span>
+            </div>
+
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${progress.percent}%` }}
+              />
+            </div>
+
+            {progress.total === 0 && (
+              <div className="text-xs text-muted-foreground">
+                لا توجد عناصر قابلة للحساب داخل خارطة الطريق بعد.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="space-y-2">
         {stages.map((s, index) => {
           const isLast = index === stages.length - 1;
@@ -140,6 +207,10 @@ export function RoadmapBlock({
           return (
             <div key={s.id} className="space-y-2">
               <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-bold">
+                  {index + 1}
+                </div>
+
                 <div className="min-w-0 flex-1">
                   {editingId === s.id ? (
                     <div className="flex flex-col gap-2 sm:flex-row">

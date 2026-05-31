@@ -98,7 +98,7 @@ export function YearCalendar({
 
         <div className="rounded-lg border bg-background p-3 text-sm text-muted-foreground">
           هذه سنة سابقة، لذلك تم إغلاق التقويم الخاص بها. يمكنك إضافة ملاحظات
-          داخل هذه السنة بشكل عادي.
+          داخل هذه السنة بشكل عادي، وكتابة انجازاتك في هذه السنة
         </div>
       </div>
     );

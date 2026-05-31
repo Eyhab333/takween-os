@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { doc, increment, updateDoc } from "firebase/firestore";
+import { doc, increment, updateDoc, writeBatch } from "firebase/firestore";
 import { celebrateDone } from "./celebrate";
 
 export async function renameNodeTitle(params: {
@@ -31,4 +31,35 @@ export async function toggleNodeDone(params: {
   if (!params.currentDone) {
     celebrateDone("big");
   }
+}
+
+export async function swapNodeOrderKeys(params: {
+  tenantId: string;
+  firstNodeId: string;
+  firstOrderKey: string;
+  secondNodeId: string;
+  secondOrderKey: string;
+}) {
+  const now = Date.now();
+  const batch = writeBatch(db);
+
+  batch.update(
+    doc(db, "tenants", params.tenantId, "nodes", params.firstNodeId),
+    {
+      orderKey: params.secondOrderKey,
+      updatedAt: now,
+      version: increment(1),
+    },
+  );
+
+  batch.update(
+    doc(db, "tenants", params.tenantId, "nodes", params.secondNodeId),
+    {
+      orderKey: params.firstOrderKey,
+      updatedAt: now,
+      version: increment(1),
+    },
+  );
+
+  await batch.commit();
 }

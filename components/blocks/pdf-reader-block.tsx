@@ -14,8 +14,10 @@ import {
   Minimize2,
   ZoomIn,
   ZoomOut,
+  Brain,
+  X,
 } from "lucide-react";
-
+import dynamic from "next/dynamic";
 import { storage } from "@/lib/firebase";
 import {
   completePdfRunManually,
@@ -28,7 +30,20 @@ import { Input } from "@/components/ui/input";
 import { celebrateDone } from "@/lib/celebrate";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
+const PdfLearningLab = dynamic(
+  () =>
+    import("@/components/blocks/pdf-learning-lab").then(
+      (mod) => mod.PdfLearningLab,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+        جارٍ تحميل مختبر التعلم...
+      </div>
+    ),
+  },
+);
 type PdfReaderBlockProps = {
   tenantId: string;
   blockId: string;
@@ -249,6 +264,8 @@ export function PdfReaderBlock({
 
   const [scale, setScale] = useState(1);
   const [isReaderFullscreen, setIsReaderFullscreen] = useState(false);
+
+  const [showLearningLab, setShowLearningLab] = useState(false);
 
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const [viewerWidth, setViewerWidth] = useState(0);
@@ -777,6 +794,37 @@ export function PdfReaderBlock({
               </div>
             </div>
           </div>
+
+          {!isReaderFullscreen && (
+            <div className="space-y-3">
+              <div className="flex justify-center">
+                <Button
+                  variant={showLearningLab ? "outline" : "default"}
+                  onClick={() => setShowLearningLab((v) => !v)}
+                >
+                  {showLearningLab ? (
+                    <>
+                      <X className="ml-2 h-4 w-4" />
+                      إغلاق مختبر التعلم
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="ml-2 h-4 w-4" />
+                      فتح مختبر التعلم
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {showLearningLab && (
+                <PdfLearningLab
+                  tenantId={tenantId}
+                  blockId={blockId}
+                  currentPage={page}
+                />
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
