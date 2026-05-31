@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 
 import { Loading } from "@/components/loading";
-
+import { celebrateDone } from "@/lib/celebrate";
 type Entry = {
   id: string;
   locked?: boolean;
@@ -357,13 +357,7 @@ function CurrentReviewCard({
 
   useEffect(() => {
     setDraft(entryToDraft(entry));
-  }, [
-    entry.id,
-    entry.startSurah,
-    entry.startAyah,
-    entry.endSurah,
-    entry.endAyah,
-  ]);
+  }, [entry]);
 
   const canFinish = Boolean(draft.endSurah && draft.endAyah);
   const isBusy = busyId === entry.id;
@@ -401,6 +395,8 @@ function CurrentReviewCard({
                 endSurah: draft.endSurah,
                 endAyah: draft.endAyah,
               });
+
+              celebrateDone("big");
             } finally {
               setBusyId(null);
             }
