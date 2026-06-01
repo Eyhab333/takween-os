@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CheckCircle2, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import type { Vision } from "./types";
 import { isLoopExecutionAllowed } from "./utils";
+import { celebrateDone } from "@/lib/celebrate";
 
 type Props = {
   vision: Vision;
-  onToggleDailyTask: (visionId: string, taskId: string) => void;
-  onAdvanceLoop: (visionId: string) => void;
+  onToggleDailyTask: (visionId: string, taskId: string) => void | Promise<void>;
+  onAdvanceLoop: (visionId: string) => void | Promise<void>;
 };
 
 const SECTION_LABELS: Record<Vision["section"], string> = {
@@ -46,7 +48,10 @@ export default function VisionCard({
 
   const loopProgressText = useMemo(() => {
     if (!loopTasks.length) return "لا توجد مهام";
-    return `${Math.min(currentLoopIndex + 1, loopTasks.length)} من ${loopTasks.length}`;
+
+    return `${Math.min(currentLoopIndex + 1, loopTasks.length)} من ${
+      loopTasks.length
+    }`;
   }, [currentLoopIndex, loopTasks.length]);
 
   return (
@@ -75,9 +80,11 @@ export default function VisionCard({
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>الختمات المكتملة: {cycleCount}</p>
               <p>التقدم الحالي: {loopProgressText}</p>
+
               {currentLoopTask ? (
                 <p>المهمة الحالية: {currentLoopTask.title}</p>
               ) : null}
+
               <p>
                 الحالة اليوم: {loopAllowed ? "متاح للتنفيذ" : "غير متاح اليوم"}
               </p>
@@ -89,9 +96,15 @@ export default function VisionCard({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-accent"
+            aria-label={open ? "طي التفاصيل" : "فتح التفاصيل"}
+            title={open ? "طي التفاصيل" : "فتح التفاصيل"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:bg-accent active:scale-95"
           >
-            {open ? "طي" : "فتح"}
+            {open ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
@@ -128,7 +141,7 @@ export default function VisionCard({
 
           {vision.executionType === "daily_tasks" && (
             <div className="space-y-3">
-              <h4 className="font-semibold">المهام اليومية</h4>
+              <h4 className="font-semibold">المهااااااااااااااام اليومية</h4>
 
               {dailyTasks.length ? (
                 <div className="space-y-2">
@@ -138,10 +151,11 @@ export default function VisionCard({
                     return (
                       <div
                         key={task.id}
-                        className="flex items-center justify-between rounded-xl border p-3"
+                        className="flex items-center justify-between gap-3 rounded-xl border p-3"
                       >
                         <div className="min-w-0">
                           <p className="font-medium">{task.title}</p>
+
                           {task.note ? (
                             <p className="text-sm text-muted-foreground">
                               {task.note}
@@ -151,10 +165,29 @@ export default function VisionCard({
 
                         <button
                           type="button"
-                          onClick={() => onToggleDailyTask(vision.id, task.id)}
-                          className="rounded-xl border px-3 py-2 text-sm hover:bg-accent"
+                          onClick={async () => {
+                            await onToggleDailyTask(vision.id, task.id);
+
+                            if (!done) {
+                              celebrateDone("soft");
+                            }
+                          }}
+                          aria-label={done ? "إلغاء الإنجاز" : "تم الإنجاز"}
+                          title={done ? "إلغاء الإنجاز" : "تم الإنجاز"}
+                          className={[
+                            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition hover:bg-accent active:scale-95",
+                            done ? "bg-accent text-accent-foreground" : "",
+                          ].join(" ")}
                         >
-                          {done ? "إلغاء الإنجاز" : "تم الإنجاز"}
+                          {done ? (
+                            <RotateCcw className="h-5 w-5" />
+                          ) : (
+                            <CheckCircle2 className="h-5 w-5" />
+                          )}
+
+                          <span className="sr-only">
+                            {done ? "إلغاء الإنجاز" : "تم الإنجاز"}
+                          </span>
                         </button>
                       </div>
                     );
@@ -183,7 +216,9 @@ export default function VisionCard({
                   <p className="mb-1 text-sm text-muted-foreground">
                     المهمة الحالية الآن
                   </p>
+
                   <p className="font-semibold">{currentLoopTask.title}</p>
+
                   {currentLoopTask.note ? (
                     <p className="mt-1 text-sm text-muted-foreground">
                       {currentLoopTask.note}
@@ -193,10 +228,14 @@ export default function VisionCard({
                   <button
                     type="button"
                     disabled={!loopAllowed}
-                    onClick={() => onAdvanceLoop(vision.id)}
-                    className="mt-3 rounded-xl border px-3 py-2 text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={async () => {
+                      await onAdvanceLoop(vision.id);
+                      celebrateDone("soft");
+                    }}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition hover:bg-accent active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    تم إنجاز المهمة الحالية
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>تم إنجاز المهمة الحالية</span>
                   </button>
                 </div>
               ) : (
@@ -220,11 +259,13 @@ export default function VisionCard({
                         <p className="font-medium">
                           {index + 1}. {task.title}
                         </p>
+
                         {task.note ? (
                           <p className="text-sm text-muted-foreground">
                             {task.note}
                           </p>
                         ) : null}
+
                         {isCurrent ? (
                           <p className="mt-1 text-xs text-muted-foreground">
                             هذه هي المهمة الحالية

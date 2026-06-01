@@ -92,9 +92,9 @@ function ayahText(ayahNum?: number | null) {
 }
 
 function formatRange(e: Entry) {
-  return `${surahName(e.startSurah)}:${ayahText(e.startAyah)} → ${surahName(
+  return `${surahName(e.startSurah)}: ${ayahText(e.startAyah)} --> ${surahName(
     e.endSurah,
-  )}:${ayahText(e.endAyah)}`;
+  )}: ${ayahText(e.endAyah)}`;
 }
 
 function entryToDraft(entry: Entry): DraftRange {
@@ -548,7 +548,7 @@ const RecentReviewList = memo(function RecentReviewList({
 
 const LockedReviewCard = memo(function LockedReviewCard({
   entry,
-  showRun = false,
+  showRun = true,
 }: {
   entry: Entry;
   showRun?: boolean;
@@ -556,16 +556,14 @@ const LockedReviewCard = memo(function LockedReviewCard({
   return (
     <div className="rounded-md border bg-card p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="font-bold">
-          {showRun ? `ختمة ${entry.runNumber ?? "-"}` : "مراجعة"}
+        <div className="text-xs text-muted-foreground">
+          {showRun ? `ختمة ${entry.runNumber ?? "-"}` : ""}
         </div>
         <div className="text-xs text-muted-foreground">
           {entry.timestampLabel || "بدون تاريخ"}
         </div>
       </div>
-      <div className="mt-1 text-muted-foreground font-bold">
-        {formatRange(entry)}
-      </div>
+      <div className="mt-1  font-bold">{formatRange(entry)}</div>
     </div>
   );
 });

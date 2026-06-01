@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import VisionCard from "./VisionCard";
 import { mockVisions } from "./mock-data";
 import type { Vision } from "./types";
+import VisionCard from "@/components/vision/VisionCard";
 
 const SECTION_TITLES: Array<{
   key: Vision["section"] | "loop-execution";
@@ -19,7 +19,7 @@ const SECTION_TITLES: Array<{
 export default function VisionPageClient() {
   const [visions, setVisions] = useState<Vision[]>(mockVisions);
 
-  function toggleDailyTask(visionId: string, taskId: string) {
+  async function toggleDailyTask(visionId: string, taskId: string) {
     setVisions((prev) =>
       prev.map((vision) => {
         if (vision.id !== visionId) return vision;
@@ -37,7 +37,7 @@ export default function VisionPageClient() {
     );
   }
 
-  function advanceLoop(visionId: string) {
+  async function advanceLoop(visionId: string) {
     setVisions((prev) =>
       prev.map((vision) => {
         if (vision.id !== visionId) return vision;
@@ -47,15 +47,14 @@ export default function VisionPageClient() {
         if (!tasks.length) return vision;
 
         const currentIndex = vision.loopState?.currentTaskIndex ?? 0;
+        const cycleCount = vision.loopState?.cycleCount ?? 0;
         const isLast = currentIndex >= tasks.length - 1;
 
         return {
           ...vision,
           loopState: {
             currentTaskIndex: isLast ? 0 : currentIndex + 1,
-            cycleCount: isLast
-              ? (vision.loopState?.cycleCount ?? 0) + 1
-              : (vision.loopState?.cycleCount ?? 0),
+            cycleCount: isLast ? cycleCount + 1 : cycleCount,
             lastCycleCompletedAt: isLast
               ? new Date().toISOString()
               : (vision.loopState?.lastCycleCompletedAt ?? null),
@@ -89,13 +88,17 @@ export default function VisionPageClient() {
     };
   }, [visions]);
 
-  const todayDailyItems = visions.filter(
-    (v) => v.executionType === "daily_tasks" && v.isActive,
-  );
+  const todayDailyItems = useMemo(() => {
+    return visions
+      .filter((v) => v.executionType === "daily_tasks" && v.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [visions]);
 
-  const todayLoopItems = visions.filter(
-    (v) => v.executionType === "sequential_loop" && v.isActive,
-  );
+  const todayLoopItems = useMemo(() => {
+    return visions
+      .filter((v) => v.executionType === "sequential_loop" && v.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [visions]);
 
   return (
     <div className="space-y-8">
@@ -119,12 +122,16 @@ export default function VisionPageClient() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border bg-card p-4 shadow-sm">
             <h3 className="mb-3 font-semibold">المهام اليومية</h3>
+
             {todayDailyItems.length ? (
               <div className="space-y-2">
                 {todayDailyItems.map((vision) => {
-                  const total =
-                    vision.dailyTasks?.filter((t) => t.isActive).length ?? 0;
-                  const done = vision.completedDailyTaskIdsToday?.length ?? 0;
+                  const activeTasks =
+                    vision.dailyTasks?.filter((t) => t.isActive) ?? [];
+                  const total = activeTasks.length;
+                  const done = activeTasks.filter((task) =>
+                    (vision.completedDailyTaskIdsToday ?? []).includes(task.id),
+                  ).length;
 
                   return (
                     <div key={vision.id} className="rounded-xl border p-3">
@@ -145,6 +152,7 @@ export default function VisionPageClient() {
 
           <div className="rounded-2xl border bg-card p-4 shadow-sm">
             <h3 className="mb-3 font-semibold">اللوب المتوالي</h3>
+
             {todayLoopItems.length ? (
               <div className="space-y-2">
                 {todayLoopItems.map((vision) => {

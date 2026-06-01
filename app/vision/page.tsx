@@ -28,7 +28,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  RotateCcw,
+  Pencil,
+  Trash2,
+  Plus,
+} from "lucide-react";
+import { celebrateDone } from "@/lib/celebrate";
 
 const SECTION_LABELS: Record<VisionSection, string> = {
   daily: "مهام يومية",
@@ -107,6 +115,7 @@ export default function VisionPage() {
     identity: false,
     goals: false,
   });
+
   useEffect(() => {
     let unsubNodes: null | (() => void) = null;
 
@@ -402,7 +411,7 @@ export default function VisionPage() {
 
               <CollapsibleTrigger asChild>
                 <Button variant={formOpen ? "outline" : "default"}>
-                  <span>{formOpen ? "طي النموذج" : "إضافة رؤية"}</span>
+                  <span>{formOpen ? "" : <Plus className="h-3 w-3" />}</span>
                   <ChevronDown
                     className={`mr-2 h-4 w-4 transition-transform ${
                       formOpen ? "rotate-180" : ""
@@ -561,7 +570,7 @@ export default function VisionPage() {
 
                 <CollapsibleTrigger asChild>
                   <Button variant="outline">
-                    <span>{sectionOpen ? "طي" : "فتح"}</span>
+                    {/* <span>{sectionOpen ? "طي" : "فتح"}</span> */}
                     <ChevronDown
                       className={`mr-2 h-4 w-4 transition-transform ${
                         sectionOpen ? "rotate-180" : ""
@@ -661,6 +670,13 @@ export default function VisionPage() {
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button
                                   variant="outline"
+                                  size="icon"
+                                  aria-label={
+                                    isOpen ? "طي التفاصيل" : "فتح التفاصيل"
+                                  }
+                                  title={
+                                    isOpen ? "طي التفاصيل" : "فتح التفاصيل"
+                                  }
                                   onClick={() =>
                                     setOpenMap((cur) => ({
                                       ...cur,
@@ -668,18 +684,29 @@ export default function VisionPage() {
                                     }))
                                   }
                                 >
-                                  {isOpen ? "طي" : "فتح"}
+                                  <ChevronDown
+                                    className={`h-4 w-4 transition-transform ${
+                                      isOpen ? "rotate-180" : ""
+                                    }`}
+                                  />
                                 </Button>
 
                                 <Button
                                   variant="outline"
+                                  size="icon"
+                                  aria-label="تعديل"
+                                  title="تعديل"
                                   onClick={() => startEdit(vision)}
                                 >
-                                  تعديل
+                                  <Pencil className="h-4 w-4" />
+                                  <span className="sr-only">تعديل</span>
                                 </Button>
 
                                 <Button
                                   variant="outline"
+                                  size="icon"
+                                  aria-label="حذف"
+                                  title="حذف"
                                   onClick={async () => {
                                     if (!uid) return;
                                     const ok = window.confirm(
@@ -690,7 +717,8 @@ export default function VisionPage() {
                                     if (editingId === vision.id) resetForm();
                                   }}
                                 >
-                                  حذف
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">حذف</span>
                                 </Button>
                               </div>
                             </div>
@@ -766,18 +794,47 @@ export default function VisionPage() {
 
                                               <Button
                                                 variant="outline"
-                                                onClick={() =>
-                                                  toggleDailyTaskDone(
+                                                size="icon"
+                                                aria-label={
+                                                  done
+                                                    ? "إلغاء الإنجاز"
+                                                    : "تم الإنجاز"
+                                                }
+                                                title={
+                                                  done
+                                                    ? "إلغاء الإنجاز"
+                                                    : "تم الإنجاز"
+                                                }
+                                                className={[
+                                                  "shrink-0 transition active:scale-95",
+                                                  done
+                                                    ? "bg-accent text-accent-foreground"
+                                                    : "",
+                                                ].join(" ")}
+                                                onClick={async () => {
+                                                  await toggleDailyTaskDone(
                                                     uid,
                                                     vision.id,
                                                     task.id,
                                                     todayKey,
-                                                  )
-                                                }
+                                                  );
+
+                                                  if (!done) {
+                                                    celebrateDone("soft");
+                                                  }
+                                                }}
                                               >
-                                                {done
-                                                  ? "إلغاء الإنجاز"
-                                                  : "تم الإنجاز"}
+                                                {done ? (
+                                                  <RotateCcw className="h-4 w-4" />
+                                                ) : (
+                                                  <CheckCircle2 className="h-4 w-4" />
+                                                )}
+
+                                                <span className="sr-only">
+                                                  {done
+                                                    ? "إلغاء الإنجاز"
+                                                    : "تم الإنجاز"}
+                                                </span>
                                               </Button>
                                             </div>
                                           );
@@ -818,11 +875,17 @@ export default function VisionPage() {
                                         disabled={
                                           !loopAllowed || !currentLoopTask
                                         }
-                                        onClick={() =>
-                                          advanceVisionLoop(uid, vision.id)
-                                        }
+                                        className="gap-2 transition active:scale-95"
+                                        onClick={async () => {
+                                          await advanceVisionLoop(
+                                            uid,
+                                            vision.id,
+                                          );
+                                          celebrateDone("soft");
+                                        }}
                                       >
-                                        تم إنجاز المهمة الحالية
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        <span>تم إنجاز المهمة الحالية</span>
                                       </Button>
                                     </div>
 
