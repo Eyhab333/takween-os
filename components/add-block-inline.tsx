@@ -48,11 +48,13 @@ export function AddBlockInline({
   parentId: string;
   onCreated?: () => void;
 }) {
-  const [type, setType] = useState<BlockType>("roadmap");
+  const [type, setType] = useState<BlockType | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function create() {
+    if (!type) return;
+
     setBusy(true);
 
     await createBlock({
@@ -71,10 +73,14 @@ export function AddBlockInline({
     <div className="flex flex-wrap items-center gap-2">
       <Select value={type} onValueChange={(v) => setType(v as BlockType)}>
         <SelectTrigger className="w-40">
-          <SelectValue placeholder="النوع" />
+          <SelectValue placeholder="اختر قالب..." />
         </SelectTrigger>
 
         <SelectContent>
+          <SelectItem value="template-placeholder" disabled>
+            اختر قالب...
+          </SelectItem>
+
           {Object.entries(LABELS).map(([k, v]) => (
             <SelectItem key={k} value={k}>
               {v}
@@ -90,7 +96,7 @@ export function AddBlockInline({
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      <Button variant="outline" onClick={create} disabled={busy}>
+      <Button variant="outline" onClick={create} disabled={busy || !type}>
         {busy ? "..." : "إضافة Block"}
       </Button>
     </div>
