@@ -320,7 +320,7 @@ export default function VisionPage() {
           هنا تتحول الرؤية إلى ممارسة عملية
         </p>
       </div>
-
+{/* 
       <div className=" grid gap-4 lg:grid-cols-2">
         <div className=" brand-card rounded-lg border bg-card p-4 space-y-3">
           <div className="text-sm font-bold">تنفيذ اليوم — المهام اليومية</div>
@@ -386,7 +386,7 @@ export default function VisionPage() {
             </div>
           )}
         </div>
-      </div>
+      </div> */}
 
       <Collapsible open={formOpen} onOpenChange={setFormOpen}>
         <div className="brand-card rounded-xl border bg-card shadow-sm">
