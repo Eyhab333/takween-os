@@ -26,7 +26,7 @@ type BlockType =
   | "link";
 
 const LABELS: Record<BlockType, string> = {
-  roadmap: "خارطة طريق(هدف)",
+  roadmap: "خطة لتحقيق هدف",
   playlist: "قائمة تشغيل يوتيوب",
   youtube_channel: "قناة يوتيوب",
   pdf_reader: "قراءة كتاب PDF",
