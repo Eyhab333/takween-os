@@ -159,7 +159,7 @@ export function RoadmapBlock({
       <div className="rounded-lg border bg-card p-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-sm font-bold">تقدم خارطة الطريق</div>
+            <div className="text-sm font-bold">نسبة تقدمي في الخطة</div>
             <div className="text-xs text-muted-foreground">
               يتم الحساب فقط عند الضغط حتى لا يؤثر على سرعة تحميل الصفحة.
             </div>
