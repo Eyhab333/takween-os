@@ -10,7 +10,7 @@ const SECTION_TITLES: Array<{
   title: string;
 }> = [
   { key: "daily", title: "مهام يومية" },
-  { key: "loop-execution", title: "اللوب المتوالي" },
+  { key: "loop-execution", title: "الختمات المتوالية" },
   { key: "mindset", title: "نمط تفكير وحياة" },
   { key: "identity", title: "هوية" },
   { key: "goals", title: "أهداف" },
@@ -151,7 +151,7 @@ export default function VisionPageClient() {
           </div>
 
           <div className="rounded-2xl border bg-card p-4 shadow-sm">
-            <h3 className="mb-3 font-semibold">اللوب المتوالي</h3>
+            <h3 className="mb-3 font-semibold">الختمات المتوالية</h3>
 
             {todayLoopItems.length ? (
               <div className="space-y-2">
