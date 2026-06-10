@@ -40,7 +40,7 @@ import { celebrateDone } from "@/lib/celebrate";
 
 const SECTION_LABELS: Record<VisionSection, string> = {
   daily: "مهام يومية",
-  loop: "اللوب المتوالي",
+  loop: "ختمات متوالية",
   mindset: "نمط تفكير وحياة",
   identity: "هوية",
   goals: "أهداف",
@@ -49,7 +49,7 @@ const SECTION_LABELS: Record<VisionSection, string> = {
 const EXECUTION_LABELS: Record<VisionExecutionType, string> = {
   none: "بدون تنفيذ",
   daily_tasks: "مهام يومية",
-  sequential_loop: "لوب متوالي",
+  sequential_loop: "ختمات متوالية",
 };
 
 // لاحقًا اربطها بمصدر فعلي للإجازات
