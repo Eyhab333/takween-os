@@ -65,7 +65,7 @@ const LINKS = [
   { href: "/weekly", label: "أسبوعي" },
   { href: "/ibadah", label: "الشريعة والإصلاح" },
   { href: "/aspects", label: "بقية الجوانب" },
-  { href: "/settings", label: "الإعدادات" },
+  // { href: "/settings", label: "الإعدادات" },
 ];
 
 function isActive(href: string, pathname: string) {

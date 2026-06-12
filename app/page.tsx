@@ -11,14 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
-import {
-  collection,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+
 import { saveFocusCurrent, clearFocusCurrent } from "@/lib/profile-actions";
 import {
   DropdownMenu,
@@ -27,6 +20,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getBlockTypeLabel } from "@/lib/block-type-labels";
+import { BlockTypeFilter } from "@/components/home/block-type-filter";
+
+
 
 function computeAgeYMD(birth: Date, now: Date) {
   let y = now.getFullYear() - birth.getFullYear();
@@ -94,9 +90,7 @@ export default function Home() {
   const [focusSaving, setFocusSaving] = useState(false);
   const [focusError, setFocusError] = useState("");
 
-  const [routines, setRoutines] = useState<
-    Array<{ id: string; title: string; blockType: string; updatedAt?: number }>
-  >([]);
+  
 
   useEffect(() => {
     return auth.onAuthStateChanged(async (u) => {
@@ -131,33 +125,8 @@ export default function Home() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!uid) return;
-
-    const nodesRef = collection(db, "tenants", uid, "nodes");
-    const qBlocks = query(
-      nodesRef,
-      where("archived", "==", false),
-      where("type", "==", "block"),
-      orderBy("updatedAt", "desc"),
-      limit(50),
-    );
-
-    return onSnapshot(qBlocks, (snap) => {
-      const rows = snap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as any) }))
-        .filter((x) => x.blockType === "habit" || x.blockType === "routine")
-        .map((x) => ({
-          id: x.id,
-          title: x.title || x.id,
-          blockType: x.blockType,
-          updatedAt: x.updatedAt,
-        }))
-        .slice(0, 20);
-
-      setRoutines(rows);
-    });
-  }, [uid]);
+ 
+  
 
   const computed = useMemo(() => {
     if (!birthDate) return null;
@@ -366,7 +335,7 @@ export default function Home() {
 
       {/* Years */}
       <div className="space-y-3">
-        <div className="text-sm font-bold">السنوات (1 → 90)</div>
+        <div className="text-sm font-bold">السنوات (إلى 90 سنة)</div>
 
         {!computed ? (
           <div className="text-muted-foreground">
@@ -523,32 +492,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="brand-card rounded-2xl p-4 space-y-3">
-        <div className="text-sm font-bold">روتيناتي</div>
-
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {routines.map((b) => (
-            <Link
-              key={b.id}
-              href={`/block/${b.id}`}
-              className="brand-card-hover pressable rounded-xl border border-border/80 bg-background/80 p-3 hover:bg-muted/70"
-            >
-              <div className="font-bold">{b.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {getBlockTypeLabel(b.blockType)}{" "}
-                {b.updatedAt
-                  ? `• ${new Date(b.updatedAt).toLocaleString("ar")}`
-                  : ""}
-              </div>
-            </Link>
-          ))}
-          {routines.length === 0 && (
-            <div className="text-muted-foreground">
-              لا يوجد عادات أو روتينات بعد.
-            </div>
-          )}
-        </div>
-      </div>
+      <BlockTypeFilter tenantId={uid} />
     </div>
   );
 }

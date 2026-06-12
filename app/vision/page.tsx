@@ -322,7 +322,10 @@ export default function VisionPage() {
       </div>
 {/* 
       <div className=" grid gap-4 lg:grid-cols-2">
+
+      {/* <div className=" grid gap-4 lg:grid-cols-2">
         <div className=" brand-card rounded-lg border bg-card p-4 space-y-3">
+          
           <div className="text-sm font-bold">تنفيذ اليوم — المهام اليومية</div>
 
           {todayDailyVisions.length === 0 ? (
@@ -398,7 +401,7 @@ export default function VisionPage() {
               <div className="text-sm text-muted-foreground">
                 {formOpen
                   ? "املأ البيانات ثم احفظ."
-                  : "افتح النموذج عند الحاجة."}
+                  : ""}
               </div>
             </div>
 
@@ -820,7 +823,7 @@ export default function VisionPage() {
                                                   );
 
                                                   if (!done) {
-                                                    celebrateDone("soft");
+                                                    celebrateDone("big");
                                                   }
                                                 }}
                                               >
@@ -881,7 +884,7 @@ export default function VisionPage() {
                                             uid,
                                             vision.id,
                                           );
-                                          celebrateDone("soft");
+                                          celebrateDone("big");
                                         }}
                                       >
                                         <CheckCircle2 className="h-4 w-4" />
