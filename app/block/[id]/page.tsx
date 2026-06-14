@@ -244,6 +244,9 @@ import { TinyExperimentsBlock } from "@/components/blocks/tiny-experiments-block
 import { renameNodeTitle } from "@/lib/node-actions";
 import { archiveSubtree } from "@/lib/archive-subtree";
 import { LinkBlock } from "@/components/blocks/link-block";
+import { Pencil, Save, Trash } from "lucide-react";
+
+
 
 const PdfReaderBlock = dynamic(
   () =>
@@ -354,21 +357,22 @@ export default function BlockPage() {
                   router.push("/explorer");
                 }
               }}
+              
             >
-              حذف البلوك
+              <Trash className="h-4 w-4" />
             </Button>
 
             {!editing ? (
               <button
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-md border px-2 py-2 text-sm"
                 onClick={() => setEditing(true)}
               >
-                تعديل الاسم
+                <Pencil className="h-4 w-4" />
               </button>
             ) : (
               <>
                 <button
-                  className="rounded-md border px-3 py-2 text-sm"
+                  className="rounded-md border px-2 py-2 text-sm"
                   onClick={async () => {
                     await renameNodeTitle({
                       tenantId,
@@ -380,7 +384,7 @@ export default function BlockPage() {
                     setEditing(false);
                   }}
                 >
-                  حفظ
+                  <Save className="h-4 w-4" />
                 </button>
 
                 <button

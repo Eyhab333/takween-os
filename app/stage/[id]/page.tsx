@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { archiveSubtree } from "@/lib/archive-subtree";
 import { getBlockTypeLabel } from "@/lib/block-type-labels";
 import { swapNodeOrderKeys, toggleNodeDone } from "@/lib/node-actions";
+import { Trash } from "lucide-react";
 
 type NodeRow = {
   id: string;
@@ -240,7 +241,7 @@ export default function StagePage() {
                     disabled={deletingId === b.id}
                     onClick={() => removeBlock(b.id)}
                   >
-                    {deletingId === b.id ? "..." : "حذف"}
+                    {deletingId === b.id ? "..." : <Trash className="ml-2 h-4 w-4" />}
                   </Button>
                 </div>
               </div>

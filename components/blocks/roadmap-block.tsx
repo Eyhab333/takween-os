@@ -34,6 +34,7 @@ import {
   calculateRoadmapProgress,
   type RoadmapProgressResult,
 } from "@/lib/roadmap-progress";
+import { Pencil, Trash } from "lucide-react";
 
 type StageRow = {
   id: string;
@@ -287,7 +288,7 @@ export function RoadmapBlock({
                     disabled={editingId === s.id}
                     onClick={() => startEditStage(s)}
                   >
-                    تعديل
+                    <Pencil className="h-4 w-4" />
                   </Button>
 
                   <Button
@@ -296,7 +297,7 @@ export function RoadmapBlock({
                     disabled={deletingId === s.id}
                     onClick={() => archiveStage(s.id)}
                   >
-                    {deletingId === s.id ? "..." : "حذف"}
+                    {deletingId === s.id ? "..." : <Trash className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
