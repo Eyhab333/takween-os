@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getBlockTypeLabel } from "@/lib/block-type-labels";
 import { BlockTypeFilter } from "@/components/home/block-type-filter";
+import { PencilIcon, SaveIcon, TrashIcon } from "lucide-react";
 
 
 
@@ -226,7 +227,7 @@ export default function Home() {
               className="brand-outline-button pressable"
               onClick={() => setEditBirth(true)}
             >
-              تعديل
+             <PencilIcon className="w-4 h-4" />
             </Button>
           </div>
         ) : (
@@ -249,7 +250,7 @@ export default function Home() {
                 setEditBirth(false);
               }}
             >
-              {savingBirth ? "..." : "حفظ"}
+              {savingBirth ? "..." : <SaveIcon className="w-4 h-4" />}
             </Button>
           </div>
         )}
@@ -285,7 +286,7 @@ export default function Home() {
               }
             }}
           >
-            {savingCompass ? "..." : "حفظ"}
+            {savingCompass ? "..." : <SaveIcon className="w-4 h-4" />}
           </Button>
         </div>
 
@@ -405,7 +406,7 @@ export default function Home() {
               disabled={focusSaving}
               onClick={saveFocus}
             >
-              {focusSaving ? "..." : "حفظ"}
+              {focusSaving ? "..." : <SaveIcon className="w-4 h-4" />}
             </Button>
             <Button
               variant="outline"
@@ -418,7 +419,7 @@ export default function Home() {
                 setFocusSelected([]);
               }}
             >
-              مسح
+              <TrashIcon className="w-4 h-4" />
             </Button>
           </div>
         </div>

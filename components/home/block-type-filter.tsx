@@ -29,9 +29,11 @@ const BLOCK_TYPE_OPTIONS = [
   { value: "routine", label: "روتين (جلسات)" },
   { value: "link", label: "رابط موقع خارجي" },
   { value: "counter", label: "عداد استغفار" },
+  { value: "tiny_experiments", label: "تجارب صغيرة" },
 ] as const;
 
-type BlockTypeFilter = (typeof BLOCK_TYPE_OPTIONS)[number]["value"];
+type BlockTypeFilterValue = (typeof BLOCK_TYPE_OPTIONS)[number]["value"];
+type SelectedBlockType = BlockTypeFilterValue | "";
 
 type BlockRow = {
   id: string;
@@ -46,7 +48,7 @@ function blockTypeLabel(value: string) {
 
 export function BlockTypeFilter({ tenantId }: { tenantId: string }) {
   const [selectedBlockType, setSelectedBlockType] =
-    useState<BlockTypeFilter>("playlist");
+    useState<SelectedBlockType>("");
 
   const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +56,8 @@ export function BlockTypeFilter({ tenantId }: { tenantId: string }) {
   const [error, setError] = useState("");
 
   async function loadBlocksByType() {
+    if (!selectedBlockType) return;
+
     setError("");
     setLoading(true);
     setSearched(true);
@@ -105,7 +109,11 @@ export function BlockTypeFilter({ tenantId }: { tenantId: string }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-between sm:w-64">
-                <span>{blockTypeLabel(selectedBlockType)}</span>
+                <span>
+                  {selectedBlockType
+                    ? blockTypeLabel(selectedBlockType)
+                    : "اختر نوع البلوك"}
+                </span>
                 <span className="text-muted-foreground">▾</span>
               </Button>
             </DropdownMenuTrigger>
@@ -117,7 +125,7 @@ export function BlockTypeFilter({ tenantId }: { tenantId: string }) {
               <DropdownMenuRadioGroup
                 value={selectedBlockType}
                 onValueChange={(value) => {
-                  setSelectedBlockType(value as BlockTypeFilter);
+                  setSelectedBlockType(value as BlockTypeFilterValue);
                   setBlocks([]);
                   setSearched(false);
                   setError("");
@@ -133,7 +141,7 @@ export function BlockTypeFilter({ tenantId }: { tenantId: string }) {
           </DropdownMenu>
 
           <Button
-            disabled={loading}
+            disabled={loading || !selectedBlockType}
             onClick={loadBlocksByType}
             className="w-full sm:w-auto"
           >
@@ -166,7 +174,7 @@ export function BlockTypeFilter({ tenantId }: { tenantId: string }) {
           </Link>
         ))}
 
-        {searched && !loading && blocks.length === 0 && (
+        {searched && !loading && blocks.length === 0 && selectedBlockType && (
           <div className="rounded-xl border border-dashed bg-background p-4 text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
             لا توجد بلوكات من نوع: {blockTypeLabel(selectedBlockType)}.
           </div>
