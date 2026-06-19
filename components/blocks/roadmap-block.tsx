@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import {
   addRoadmapStage,
+  moveRoadmapStage,
   setStageStatus,
   type StageStatus,
 } from "@/lib/roadmap-actions";
@@ -67,7 +68,7 @@ export function RoadmapBlock({
   const [editTitle, setEditTitle] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
+  const [movingId, setMovingId] = useState<string | null>(null);
   useEffect(() => {
     const nodesRef = collection(db, "tenants", tenantId, "nodes");
     const q = query(
@@ -144,6 +145,36 @@ export function RoadmapBlock({
     }
   }
 
+  async function moveStage(index: number, direction: "up" | "down") {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+    const currentStage = stages[index];
+    const targetStage = stages[targetIndex];
+
+    if (!currentStage || !targetStage) return;
+
+    if (!currentStage.orderKey || !targetStage.orderKey) {
+      window.alert(
+        "لا يمكن إعادة ترتيب هذه المرحلة لأن مفتاح الترتيب غير موجود.",
+      );
+      return;
+    }
+
+    setMovingId(currentStage.id);
+
+    try {
+      await moveRoadmapStage({
+        tenantId,
+        stageId: currentStage.id,
+        stageOrderKey: currentStage.orderKey,
+        targetStageId: targetStage.id,
+        targetStageOrderKey: targetStage.orderKey,
+      });
+    } finally {
+      setMovingId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -202,8 +233,10 @@ export function RoadmapBlock({
 
       <div className="space-y-2">
         {stages.map((s, index) => {
+          const isFirst = index === 0;
           const isLast = index === stages.length - 1;
           const status = (s.status ?? "not_started") as StageStatus;
+          const isMoving = movingId === s.id;
 
           return (
             <div key={s.id} className="space-y-2">
@@ -255,6 +288,28 @@ export function RoadmapBlock({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isFirst || isMoving || !!movingId}
+                      onClick={() => moveStage(index, "up")}
+                      title="رفع المرحلة"
+                    >
+                      ↑
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isLast || isMoving || !!movingId}
+                      onClick={() => moveStage(index, "down")}
+                      title="إنزال المرحلة"
+                    >
+                      ↓
+                    </Button>
+                  </div>
+
                   <div className="text-xs text-muted-foreground">
                     {STATUS_LABEL[status]}
                   </div>
@@ -297,7 +352,11 @@ export function RoadmapBlock({
                     disabled={deletingId === s.id}
                     onClick={() => archiveStage(s.id)}
                   >
-                    {deletingId === s.id ? "..." : <Trash className="h-4 w-4" />}
+                    {deletingId === s.id ? (
+                      "..."
+                    ) : (
+                      <Trash className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
